@@ -21,7 +21,8 @@ import { useHiddenConversations } from '@/src/features/chat/hooks/useHiddenConve
 import { NotificationBadge } from '@/src/components/NotificationBadge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/src/theme/colors';
-import { MessageCircle, Eye, EyeOff } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { MessageCircle, Eye, EyeOff } from '@/src/utils/iconFallback';
 
 export default function ChatTabScreen() {
   /* ===================== HOOKS ===================== */

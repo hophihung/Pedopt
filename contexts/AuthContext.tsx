@@ -96,9 +96,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Background tasks - don't block UI
       if (data && data.role === 'seller') {
         // Run in background, don't await
-        supabase.rpc('ensure_seller_has_subscription', {
-          user_profile_id: userId
-        }).catch(() => {}); // Ignore errors
+        (async () => {
+          try {
+            await supabase.rpc('ensure_seller_has_subscription', {
+              user_profile_id: userId
+            });
+          } catch (error) {
+            // Ignore errors
+          }
+        })();
       }
 
       // Background social auth handling
@@ -122,122 +128,104 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     
     try {
-      // Lấy IP address
-      const clientIP = await getClientIPWithRetry();
+      // Đăng nhập trước, không chờ IP check để tránh network timeout
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      if (clientIP) {
-        // Kiểm tra IP có bị ban không
-        const { data: banCheck, error: banError } = await supabase.rpc('check_ip_ban', {
-          p_ip_address: clientIP,
-        });
+      if (error) throw error;
 
-        if (banError) {} else if (banCheck?.banned) {
-          const errorMessage = banCheck.reason || 'IP address của bạn đã bị ban';
-          throw new Error(errorMessage);
-        }
-
-        // Đăng nhập
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });if (error) throw error;
-
-        // Nếu muốn phản hồi UI ngay khi đăng nhập thành công:
-        if (data?.session?.user) {
-          // Track IP sau khi đăng nhập thành công
+      // Background IP tracking - không block UI
+      if (data?.session?.user) {
+        // Chạy IP tracking trong background, không await
+        getClientIPWithRetry().then(async (clientIP) => {
           if (clientIP) {
             try {
-              await supabase.rpc('track_user_ip', {
-                p_user_id: data.session.user.id,
+              // Kiểm tra IP ban trong background
+              const { data: banCheck } = await supabase.rpc('check_ip_ban', {
                 p_ip_address: clientIP,
               });
+
+              if (banCheck?.banned) {
+                console.warn('IP is banned:', banCheck.reason);
+                // Có thể hiển thị warning hoặc sign out user
+              } else {
+                // Track IP sau khi đăng nhập thành công
+                await supabase.rpc('track_user_ip', {
+                  p_user_id: data.session.user.id,
+                  p_ip_address: clientIP,
+                });
+              }
             } catch (trackError) {
-              // track IPing IP không quan trọng bằng đăng nhập
+              console.warn('IP tracking failed:', trackError);
             }
           }
-
-          setSession(data.session);
-          setUser(data.session.user);
-          await fetchProfile(data.session.user.id);
-          router.replace('/(tabs)/discover/match' as any);
-        }
-      } else {
-        // track IP
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        }).catch((ipError) => {
+          console.warn('Background IP check failed:', ipError);
         });
-
-        if (error) throw error;
-
-        if (data?.session?.user) {
-          setSession(data.session);
-          setUser(data.session.user);
-          await fetchProfile(data.session.user.id);
-          router.replace('/(tabs)/discover/match' as any);
-        }
       }
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, fullName?: string) => {
-    // Lấy IP address trước khi đăng ký
-    const clientIP = await getClientIPWithRetry();
-    
-    if (clientIP) {
-      // Kiểm tra IP có bị ban không
-      const { data: banCheck, error: banError } = await supabase.rpc('check_ip_ban', {
-        p_ip_address: clientIP,
-      });
-
-      if (banError) {} else if (banCheck?.banned) {
-        const errorMessage = banCheck.reason || 'IP address của bạn đã bị ban. Không thể đăng ký tài khoản mới.';
-        throw new Error(errorMessage);
-      }
-
-      // Kiểm tra số lượng tài khoản từ IP này
-      const { data: limitCheck, error: limitError } = await supabase.rpc('check_ip_account_limit', {
-        p_ip_address: clientIP,
-        p_max_accounts: 3, // Giới hạn 3 tài khoản mỗi IP
-      });
-
-      if (limitError) {} else if (limitCheck?.banned || !limitCheck?.success) {
-        const errorMessage = limitCheck?.message || 'IP address đã đăng ký quá nhiều tài khoản. Không thể đăng ký thêm.';
-        throw new Error(errorMessage);
-      }
-    }
-
-    // Đăng ký tài khoản với metadata full_name nếu có
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName || null,
+    try {
+      // Đăng ký tài khoản trước, không chờ IP check
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName || null,
+          },
         },
-      },
-    });
-    
-    if (error) throw error;
+      });
+      
+      if (error) throw error;
 
-    // Track IP sau khi đăng ký thành công
-    if (clientIP && data?.user) {
-      try {
-        await supabase.rpc('track_user_ip', {
-          p_user_id: data.user.id,
-          p_ip_address: clientIP,
-        });
+      // Background IP tracking và validation - không block UI
+      if (data?.user) {
+        getClientIPWithRetry().then(async (clientIP) => {
+          if (clientIP) {
+            try {
+              // Kiểm tra IP ban và limit trong background
+              const [banCheck, limitCheck] = await Promise.all([
+                supabase.rpc('check_ip_ban', { p_ip_address: clientIP }),
+                supabase.rpc('check_ip_account_limit', { 
+                  p_ip_address: clientIP, 
+                  p_max_accounts: 3 
+                })
+              ]);
 
-        // track IP để tự động ban nếu vượt quá
-        await supabase.rpc('check_ip_account_limit', {
-          p_ip_address: clientIP,
-          p_max_accounts: 3,
+              if (banCheck.data?.banned) {
+                console.warn('User registered from banned IP:', banCheck.data.reason);
+              }
+
+              if (limitCheck.data && (!limitCheck.data.success || limitCheck.data.banned)) {
+                console.warn('IP account limit exceeded:', limitCheck.data.message);
+              }
+
+              // Track IP
+              await supabase.rpc('track_user_ip', {
+                p_user_id: data.user!.id,
+                p_ip_address: clientIP,
+              });
+            } catch (trackError) {
+              console.warn('Background IP tracking failed:', trackError);
+            }
+          }
+        }).catch((ipError) => {
+          console.warn('Background IP check failed:', ipError);
         });
-      } catch (trackError) {
-        // track IP không quan trọng bằng đăng ký
       }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw error;
     }
   };
 

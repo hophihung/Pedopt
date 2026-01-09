@@ -12,7 +12,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Heart, Mail, Lock, Sparkles } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { Heart, Mail, Lock, Sparkles } from '@/src/utils/iconFallback';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import { modernTheme } from '@/src/theme/modernTheme';

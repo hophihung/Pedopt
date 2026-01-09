@@ -8,7 +8,8 @@ import { ProfileProvider } from '@/src/features/profile/context/ProfileContext';
 import { PetCacheProvider } from '@/src/contexts/PetCacheContext';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NoInternetBanner } from '@/src/components';
+// Temporarily disabled NoInternetBanner import to fix view registry error
+// import { NoInternetBanner } from '@/src/components';
 
 function RootLayoutNav() {
   const { user, loading } = useAuth();
@@ -44,7 +45,8 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
       </Stack>
-      <NoInternetBanner />
+      {/* Temporarily disabled NoInternetBanner to fix view registry error */}
+      {/* <NoInternetBanner /> */}
     </>
   );
 }

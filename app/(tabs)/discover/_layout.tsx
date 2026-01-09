@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Heart, Search } from 'lucide-react-native';
+// Temporarily using Expo vector icons instead of Lucide to fix view registry error
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 
 export default function DiscoverTabLayout() {

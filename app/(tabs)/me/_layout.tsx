@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { User } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { User } from '@/src/utils/iconFallback';
 import { colors } from '@/src/theme/colors';
 
 export default function MeTabLayout() {

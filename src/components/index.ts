@@ -18,7 +18,8 @@ export { Header } from './Header';
 
 // Export network status components
 export { NoInternetScreen } from './NoInternetScreen';
-export { NoInternetBanner } from './NoInternetBanner';
+// Temporarily disabled NoInternetBanner export to fix view registry error
+// export { NoInternetBanner } from './NoInternetBanner';
 
 // Export debug components
 export { PayOSDebugPanel } from './PayOSDebugPanel';

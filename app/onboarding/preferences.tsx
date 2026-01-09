@@ -11,7 +11,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { ArrowRight, Check } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { ArrowRight, Check } from '@/src/utils/iconFallback';
 
 const PET_TYPES = [
   { id: 'dog', name: 'Chó', emoji: '🐕' },

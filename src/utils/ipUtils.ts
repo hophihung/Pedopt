@@ -22,31 +22,26 @@ export async function getClientIP(): Promise<string | null> {
           headers: {
             'Accept': 'application/json',
           },
+          // Thêm timeout để tránh hang
+          signal: AbortSignal.timeout(5000), // 5 second timeout
         });
 
         if (!response.ok) continue;
 
         const data = await response.json();
         
-        // ipify.org trả về { ip: "..." }
-        if (data.ip) {
-          return data.ip;
-        }
-        
-        // ipapi.co trả về { ip: "..." }
+        // ipify.org và ipapi.co đều trả về { ip: "..." }
         if (data.ip) {
           return data.ip;
         }
       } catch (error) {
-        console.warn(`Failed to get IP from ${service}:`, error);
+        // Không log error để tránh spam console
         continue;
       }
     }
 
-    console.warn('Failed to get IP from all services');
     return null;
   } catch (error) {
-    console.error('Error getting client IP:', error);
     return null;
   }
 }
@@ -54,16 +49,16 @@ export async function getClientIP(): Promise<string | null> {
 /**
  * Lấy IP address với retry mechanism
  */
-export async function getClientIPWithRetry(maxRetries: number = 3): Promise<string | null> {
+export async function getClientIPWithRetry(maxRetries: number = 2): Promise<string | null> {
   for (let i = 0; i < maxRetries; i++) {
     const ip = await getClientIP();
     if (ip) {
       return ip;
     }
     
-    // Đợi một chút trước khi retry
+    // Đợi một chút trước khi retry, nhưng không quá lâu
     if (i < maxRetries - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
     }
   }
   

@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/contexts/AuthContext';
-import { Heart, X, RotateCcw, Star, Send, MapPin, Home, Grid3x3 } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { Heart, X, RotateCcw, Star, Send, MapPin, Home, Grid3x3 } from '@/src/utils/iconFallback';
 import { useRouter } from 'expo-router';
 import Swiper from 'react-native-deck-swiper';
 import { PetService } from '@/src/features/pets/services/pet.service';

@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Users, MessageCircle } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { Users, MessageCircle } from '@/src/utils/iconFallback';
 import { colors } from '@/src/theme/colors';
 
 export default function SocialTabLayout() {

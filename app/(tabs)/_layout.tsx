@@ -1,25 +1,27 @@
 import { Tabs } from 'expo-router';
-import { Home, MessageCircle, PawPrint, User } from 'lucide-react-native';
-import { colors } from '@/src/theme/colors';
-import { Platform, View } from 'react-native';
+// Temporarily using Expo vector icons instead of Lucide to fix view registry error
+import { Ionicons } from '@expo/vector-icons';
+import { Platform, View, Text } from 'react-native';
 import { OnboardingWrapper } from '@/src/components/OnboardingWrapper';
-import { useDoubleTapNavigation } from '@/src/hooks/useDoubleTapNavigation';
-import { usePetPreloader } from '@/src/features/pets/hooks/usePetPreloader';
-import { usePetCacheInvalidation } from '@/src/features/pets/hooks/usePetCacheInvalidation';
-import { useUnreadCount } from '@/src/features/chat/hooks/useUnreadCount';
-import { NotificationBadge } from '@/src/components/NotificationBadge';
 import { useEffect } from 'react';
 import { Linking } from 'react-native';
 
+// Temporarily disable hooks that might cause view registry issues
+// import { useDoubleTapNavigation } from '@/src/hooks/useDoubleTapNavigation';
+// import { usePetPreloader } from '@/src/features/pets/hooks/usePetPreloader';
+// import { usePetCacheInvalidation } from '@/src/features/pets/hooks/usePetCacheInvalidation';
+// import { useUnreadCount } from '@/src/features/chat/hooks/useUnreadCount';
+
 export default function TabLayout() {
-  const { handleTabPress } = useDoubleTapNavigation();
-  const { totalUnreadCount } = useUnreadCount();
+  // Temporarily disable hooks that might cause view registry issues
+  // const { handleTabPress } = useDoubleTapNavigation();
+  // const { totalUnreadCount } = useUnreadCount();
   
   // Preload pet data khi app khởi động
-  usePetPreloader();
+  // usePetPreloader();
   
   // Auto invalidate cache khi cần thiết
-  usePetCacheInvalidation();
+  // usePetCacheInvalidation();
 
   // Debug deep links for OAuth callback
   useEffect(() => {
@@ -77,7 +79,8 @@ export default function TabLayout() {
   }, []);
 
   return (
-    <OnboardingWrapper>
+    // Temporarily disable OnboardingWrapper to isolate view registry issue
+    // <OnboardingWrapper>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -112,10 +115,7 @@ export default function TabLayout() {
           name="discover"
           options={{
             title: 'Trang chủ',
-            tabBarIcon: ({ color }) => <Home size={28} color={color} strokeWidth={2.2} />,
-          }}
-          listeners={{
-            tabPress: (e) => handleTabPress(e, 'discover'),
+            tabBarIcon: ({ color }) => <Ionicons name="home" size={28} color={color} />,
           }}
         />
 
@@ -124,10 +124,7 @@ export default function TabLayout() {
           name="pets"
           options={{
             title: 'Tìm thú cưng',
-            tabBarIcon: ({ color }) => <PawPrint size={28} color={color} strokeWidth={2.2} />,
-          }}
-          listeners={{
-            tabPress: (e) => handleTabPress(e, 'pets'),
+            tabBarIcon: ({ color }) => <Ionicons name="paw" size={28} color={color} />,
           }}
         />
 
@@ -136,25 +133,7 @@ export default function TabLayout() {
           name="social"
           options={{
             title: 'Tin nhắn',
-            tabBarIcon: ({ color }) => (
-              <View style={{ position: 'relative' }}>
-                <MessageCircle size={28} color={color} strokeWidth={2.2} />
-                {totalUnreadCount > 0 && (
-                  <NotificationBadge
-                    count={totalUnreadCount}
-                    size="small"
-                    style={{
-                      position: 'absolute',
-                      top: -6,
-                      right: -6,
-                    }}
-                  />
-                )}
-              </View>
-            ),
-          }}
-          listeners={{
-            tabPress: (e) => handleTabPress(e, 'social'),
+            tabBarIcon: ({ color }) => <Ionicons name="chatbubble" size={28} color={color} />,
           }}
         />
 
@@ -163,13 +142,10 @@ export default function TabLayout() {
           name="me"
           options={{
             title: 'Tài khoản',
-            tabBarIcon: ({ color }) => <User size={28} color={color} strokeWidth={2.2} />,
-          }}
-          listeners={{
-            tabPress: (e) => handleTabPress(e, 'me'),
+            tabBarIcon: ({ color }) => <Ionicons name="person" size={28} color={color} />,
           }}
         />
       </Tabs>
-    </OnboardingWrapper>
+    // </OnboardingWrapper>
   );
 }

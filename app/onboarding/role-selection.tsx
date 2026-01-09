@@ -11,7 +11,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Heart, ShoppingBag, ArrowRight } from 'lucide-react-native';
+// Temporarily using icon fallback to fix view registry error
+import { Heart, ShoppingBag, ArrowRight } from '@/src/utils/iconFallback';
 
 export default function RoleSelectionScreen() {
   const [selectedRole, setSelectedRole] = useState<'user' | 'seller' | null>(null);
