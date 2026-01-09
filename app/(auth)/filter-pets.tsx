@@ -181,12 +181,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: {
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 80, // Tăng từ 60 lên 80 để header cách xa hơn
     maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
   },
-  header: { marginBottom: 32, alignItems: 'center' },
+  header: { 
+    marginBottom: 40, // Tăng từ 32 lên 40
+    alignItems: 'center',
+    marginTop: 20, // Thêm margin top
+  },
   headerEmoji: { fontSize: 48, marginBottom: 12 },
   title: {
     fontWeight: 'bold',
@@ -229,7 +233,10 @@ const styles = StyleSheet.create({
     color: '#8B4513',
     backgroundColor: '#FFF7F8',
   },
-  buttons: { marginTop: 32, marginBottom: 40 },
+  buttons: { 
+    marginTop: 40, // Tăng từ 32 lên 40
+    marginBottom: 60, // Tăng từ 40 lên 60 để footer cách xa hơn
+  },
   button: {
     paddingVertical: 8,
     borderRadius: 16,

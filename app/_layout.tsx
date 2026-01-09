@@ -3,9 +3,12 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { LanguageProvider } from '@/src/contexts/LanguageContext';
 import { ProfileProvider } from '@/src/features/profile/context/ProfileContext';
+import { PetCacheProvider } from '@/src/contexts/PetCacheContext';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { NoInternetBanner } from '@/src/components';
 
 function RootLayoutNav() {
   const { user, loading } = useAuth();
@@ -35,11 +38,14 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
+      </Stack>
+      <NoInternetBanner />
+    </>
   );
 }
 
@@ -47,13 +53,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <ProfileProvider>
-          <LocationProvider>
-            <SubscriptionProvider>
-              <RootLayoutNav />
-            </SubscriptionProvider>
-          </LocationProvider>
-        </ProfileProvider>
+        <LanguageProvider>
+          <ProfileProvider>
+            <LocationProvider>
+              <SubscriptionProvider>
+                <PetCacheProvider>
+                  <RootLayoutNav />
+                </PetCacheProvider>
+              </SubscriptionProvider>
+            </LocationProvider>
+          </ProfileProvider>
+        </LanguageProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

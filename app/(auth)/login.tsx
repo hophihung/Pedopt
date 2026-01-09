@@ -15,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { FacebookLoginButton } from '@/src/components/FacebookLoginButton';
+import { GoogleLoginButton } from '@/src/components/GoogleLoginButton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,6 +27,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const handleEmailAuth = async () => {
@@ -44,14 +47,17 @@ export default function LoginScreen() {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-    setLoading(true);
+    setSocialLoading(provider);
     try {
-      if (provider === 'google') await signInWithGoogle();
-      else await signInWithFacebook();
+      if (provider === 'google') {
+        await signInWithGoogle();
+      } else {
+        await signInWithFacebook();
+      }
     } catch (error: any) {
-      Alert.alert('Ối', error.message);
+      Alert.alert('Lỗi đăng nhập', error.message || 'Không thể đăng nhập. Vui lòng thử lại.');
     } finally {
-      setLoading(false);
+      setSocialLoading(null);
     }
   };
 
@@ -144,23 +150,19 @@ export default function LoginScreen() {
 
             {/* Social Buttons */}
             <View style={styles.socialContainer}>
-              <TouchableOpacity
+              <GoogleLoginButton
                 onPress={() => handleSocialLogin('google')}
-                disabled={loading}
-                style={styles.socialButton}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.socialText}>Google</Text>
-              </TouchableOpacity>
+                disabled={loading || socialLoading !== null}
+                loading={socialLoading === 'google'}
+                style={styles.socialButtonFull}
+              />
 
-              <TouchableOpacity
+              <FacebookLoginButton
                 onPress={() => handleSocialLogin('facebook')}
-                disabled={loading}
-                style={styles.socialButton}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.socialText}>Facebook</Text>
-              </TouchableOpacity>
+                disabled={loading || socialLoading !== null}
+                loading={socialLoading === 'facebook'}
+                style={styles.socialButtonFull}
+              />
             </View>
           </View>
 
@@ -197,18 +199,18 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
   },
   logoEmoji: {
     fontSize: 36,
@@ -227,13 +229,13 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 28,
+    borderRadius: 32,
+    padding: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 28,
+    elevation: 12,
   },
   inputGroup: {
     marginBottom: 18,
@@ -247,29 +249,34 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     fontSize: 16,
     color: '#1A1A1A',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#E5E7EB',
   },
   inputFocused: {
     backgroundColor: '#FFFFFF',
     borderColor: '#FF6B6B',
-  },
-  loginButton: {
-    marginTop: 12,
-    backgroundColor: '#FF6B6B',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
     shadowColor: '#FF6B6B',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 4,
+  },
+  loginButton: {
+    marginTop: 16,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 20,
+    paddingVertical: 18,
+    alignItems: 'center',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   loginButtonDisabled: {
     opacity: 0.6,
@@ -297,22 +304,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   socialContainer: {
-    flexDirection: 'row',
     gap: 12,
   },
-  socialButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-  },
-  socialText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
+  socialButtonFull: {
+    width: '100%',
   },
   registerLink: {
     alignItems: 'center',

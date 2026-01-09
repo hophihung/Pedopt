@@ -1,5 +1,6 @@
 import { supabase } from '../../../../lib/supabaseClient';
 import { Profile, UpdateProfileInput, ProfileStats } from '../../profile/types/profile.types';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export class ProfileService {
   /**
@@ -105,19 +106,23 @@ export class ProfileService {
     file: { uri: string; type: string; name: string }
   ): Promise<string> {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `avatar-${Date.now()}.${fileExt}`;
+      const filePath = `${userId}/${fileName}`;
 
-      // Convert file to blob
-      const response = await fetch(file.uri);
-      const blob = await response.blob();
+      // Use FileSystem to read file as base64 (React Native compatible)
+      const base64 = await FileSystem.readAsStringAsync(file.uri, { 
+        encoding: 'base64' 
+      });
+      
+      // Convert base64 to ArrayBuffer
+      const arrayBuffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('profile')
-        .upload(filePath, blob, {
-          contentType: file.type,
+        .from('profiles')
+        .upload(filePath, arrayBuffer, {
+          contentType: file.type || `image/${fileExt}`,
           upsert: false,
         });
 
@@ -125,7 +130,7 @@ export class ProfileService {
 
       // Get public URL
       const { data } = supabase.storage
-        .from('profile')
+        .from('profiles')
         .getPublicUrl(filePath);
 
       return data.publicUrl;

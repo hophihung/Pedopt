@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { Check, Globe } from 'lucide-react-native';
-import { I18n, Language } from '@/src/i18n';
+import { Language } from '@/src/i18n';
 import { colors } from '@/src/theme/colors';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/src/contexts/LanguageContext';
 
 interface LanguageSelectorProps {
   onLanguageChange?: (language: Language) => void;
@@ -22,53 +21,15 @@ const LANGUAGES: { code: Language; name: string; nativeName: string; flag: strin
 ];
 
 export function LanguageSelector({ onLanguageChange }: LanguageSelectorProps) {
-  const { user } = useAuth();
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(I18n.getLanguage());
-
-  useEffect(() => {
-    loadUserLanguage();
-  }, [user]);
-
-  const loadUserLanguage = async () => {
-    if (!user?.id) return;
-
-    try {
-      const { data } = await supabase
-        .from('user_preferences')
-        .select('preferred_language')
-        .eq('user_id', user.id)
-        .single();
-
-      if (data?.preferred_language) {
-        const lang = data.preferred_language as Language;
-        setSelectedLanguage(lang);
-        I18n.setLanguage(lang);
-      }
-    } catch (error) {
-      console.error('Error loading user language:', error);
-    }
-  };
+  const { language: selectedLanguage, setLanguage } = useLanguage();
 
   const handleSelectLanguage = async (language: Language) => {
-    setSelectedLanguage(language);
-    I18n.setLanguage(language);
-
-    // Save to database
-    if (user?.id) {
-      try {
-        await supabase
-          .from('user_preferences')
-          .upsert({
-            user_id: user.id,
-            preferred_language: language,
-            updated_at: new Date().toISOString(),
-          });
-      } catch (error) {
-        console.error('Error saving language preference:', error);
-      }
+    try {
+      await setLanguage(language);
+      onLanguageChange?.(language);
+    } catch (error) {
+      console.error('Error changing language:', error);
     }
-
-    onLanguageChange?.(language);
   };
 
   return (

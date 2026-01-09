@@ -9,13 +9,12 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { ArrowLeft, MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProfile } from '../../../src/features/profile/context/ProfileContext';
-import { nearbyPetsService } from '../../../src/services/nearby-pets.service';
 import { colors } from '@/src/theme/colors';
 import { LanguageSelector } from '@/src/components/LanguageSelector';
 import { CurrencySelector } from '@/src/components/CurrencySelector';
@@ -24,6 +23,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { profile, updateProfile, refreshProfile } = useProfile();
+  const insets = useSafeAreaInsets();
   const [searchRadius, setSearchRadius] = useState(50);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -75,7 +75,14 @@ export default function SettingsScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + 120 } // Tăng padding để tránh bị tab layout che
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Language Section */}
         <View style={styles.section}>
           <LanguageSelector />
@@ -257,7 +264,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    marginTop: 20, // Tăng margin top
+    marginBottom: 20, // Thêm margin bottom
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

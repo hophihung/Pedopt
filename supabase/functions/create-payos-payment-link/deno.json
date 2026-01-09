@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "types": ["https://deno.land/x/types/deno.d.ts"]
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.168.0/"
+  }
+}

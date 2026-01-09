@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PetService, PetCreateData, PetUpdateData } from '../services/pet.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { usePetCache } from '@/src/contexts/PetCacheContext';
+import { logCacheHit, logCacheMiss } from '../utils/cacheMonitor';
 
 export interface PetLimitInfo {
   currentCount: number;
@@ -13,11 +15,19 @@ export interface PetLimitInfo {
 export function usePetManagement() {
   const { user } = useAuth();
   const { subscription } = useSubscription();
+  const { 
+    setCachedUserPets, 
+    getCachedUserPets, 
+    invalidateUserPets,
+    getCacheAge 
+  } = usePetCache();
+  
   const [userPets, setUserPets] = useState<any[]>([]);
   const [availablePets, setAvailablePets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [petLimitInfo, setPetLimitInfo] = useState<PetLimitInfo | null>(null);
+  const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
 
   // Lấy thông tin giới hạn pet
   const fetchPetLimitInfo = async () => {
@@ -40,23 +50,64 @@ export function usePetManagement() {
     }
   };
 
-  // Lấy pets của user
-  const fetchUserPets = async () => {
+  // Lấy pets của user với cache
+  const fetchUserPets = useCallback(async (forceRefresh: boolean = false) => {
     if (!user) return;
 
     try {
-      setLoading(true);
       setError(null);
+
+      // Nếu không force refresh, thử load từ cache trước
+      if (!forceRefresh) {
+        setIsLoadingFromCache(true);
+        const cachedPets = await getCachedUserPets(user.id);
+        
+        if (cachedPets) {
+          const cacheAge = await getCacheAge(`user_pets_${user.id}`);
+          console.log(`📦 Loaded ${cachedPets.length} pets from cache (age: ${cacheAge}min)`);
+          
+          // Log cache hit
+          if (cacheAge !== null) {
+            logCacheHit(cacheAge);
+          }
+          
+          setUserPets(cachedPets);
+          setIsLoadingFromCache(false);
+          
+          // Nếu cache còn mới (< 30 phút), không cần fetch từ server
+          if (cacheAge !== null && cacheAge < 30) {
+            return;
+          }
+          
+          // Nếu cache cũ hơn 30 phút, fetch từ server trong background
+          console.log('🔄 Cache is old, refreshing in background...');
+        } else {
+          // Log cache miss
+          logCacheMiss();
+        }
+        setIsLoadingFromCache(false);
+      }
+
+      // Fetch từ server
+      setLoading(true);
       const pets = await PetService.getUserPets(user.id);
+      
+      console.log(`🌐 Loaded ${pets.length} pets from server`);
+      
       setUserPets(pets);
+      
+      // Cache kết quả mới
+      await setCachedUserPets(user.id, pets);
+      
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch user pets';
       setError(message);
       console.error('Error fetching user pets:', err);
     } finally {
       setLoading(false);
+      setIsLoadingFromCache(false);
     }
-  };
+  }, [user, getCachedUserPets, setCachedUserPets, getCacheAge]);
 
   // Lấy pets có sẵn (cho swipe)
   const fetchAvailablePets = async () => {
@@ -85,11 +136,18 @@ export function usePetManagement() {
       setError(null);
       
       const newPet = await PetService.createPet(user.id, petData, subscription.plan);
-      setUserPets(prev => [newPet, ...prev]);
+      
+      // Update local state
+      const updatedPets = [newPet, ...userPets];
+      setUserPets(updatedPets);
+      
+      // Update cache
+      await setCachedUserPets(user.id, updatedPets);
       
       // Cập nhật thông tin giới hạn
       await fetchPetLimitInfo();
       
+      console.log('✅ Pet created and cache updated');
       return newPet;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create pet';
@@ -111,10 +169,15 @@ export function usePetManagement() {
       setError(null);
       
       const updatedPet = await PetService.updatePet(petId, user.id, petData);
-      setUserPets(prev => 
-        prev.map(pet => pet.id === petId ? updatedPet : pet)
-      );
       
+      // Update local state
+      const updatedPets = userPets.map(pet => pet.id === petId ? updatedPet : pet);
+      setUserPets(updatedPets);
+      
+      // Update cache
+      await setCachedUserPets(user.id, updatedPets);
+      
+      console.log('✅ Pet updated and cache refreshed');
       return updatedPet;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update pet';
@@ -136,10 +199,18 @@ export function usePetManagement() {
       setError(null);
       
       await PetService.deletePet(petId, user.id);
-      setUserPets(prev => prev.filter(pet => pet.id !== petId));
+      
+      // Update local state
+      const updatedPets = userPets.filter(pet => pet.id !== petId);
+      setUserPets(updatedPets);
+      
+      // Update cache
+      await setCachedUserPets(user.id, updatedPets);
       
       // Cập nhật thông tin giới hạn
       await fetchPetLimitInfo();
+      
+      console.log('✅ Pet deleted and cache updated');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete pet';
       setError(message);
@@ -160,10 +231,15 @@ export function usePetManagement() {
       setError(null);
       
       const updatedPet = await PetService.togglePetAvailability(petId, user.id);
-      setUserPets(prev => 
-        prev.map(pet => pet.id === petId ? updatedPet : pet)
-      );
       
+      // Update local state
+      const updatedPets = userPets.map(pet => pet.id === petId ? updatedPet : pet);
+      setUserPets(updatedPets);
+      
+      // Update cache
+      await setCachedUserPets(user.id, updatedPets);
+      
+      console.log('✅ Pet availability toggled and cache updated');
       return updatedPet;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to toggle pet availability';
@@ -191,13 +267,29 @@ export function usePetManagement() {
     }
   };
 
+  // Invalidate cache (for manual refresh)
+  const invalidateCache = useCallback(async () => {
+    if (!user) return;
+    
+    await invalidateUserPets(user.id);
+    console.log('🗑️ Pet cache invalidated');
+  }, [user, invalidateUserPets]);
+
+  // Force refresh (clear cache and fetch from server)
+  const forceRefresh = useCallback(async () => {
+    if (!user) return;
+    
+    await invalidateCache();
+    await fetchUserPets(true);
+  }, [user, invalidateCache, fetchUserPets]);
+
   // Load dữ liệu ban đầu
   useEffect(() => {
     if (user && subscription) {
-      fetchUserPets();
+      fetchUserPets(false); // Load from cache first
       fetchPetLimitInfo();
     }
-  }, [user, subscription]);
+  }, [user, subscription, fetchUserPets]);
 
   return {
     // Data
@@ -206,6 +298,7 @@ export function usePetManagement() {
     petLimitInfo,
     loading,
     error,
+    isLoadingFromCache,
     
     // Actions
     createPet,
@@ -216,6 +309,10 @@ export function usePetManagement() {
     fetchUserPets,
     fetchAvailablePets,
     fetchPetLimitInfo,
+    
+    // Cache actions
+    invalidateCache,
+    forceRefresh,
     
     // Utilities
     canCreatePet: petLimitInfo?.canCreate || false,

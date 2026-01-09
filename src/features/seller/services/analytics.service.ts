@@ -19,7 +19,7 @@ export const SellerAnalyticsService = {
       // Get total revenue from completed orders
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('id, total_amount, status, created_at')
+        .select('id, final_price, status, created_at, escrow_account_id')
         .eq('seller_id', sellerId);
 
       if (ordersError) throw ordersError;
@@ -29,18 +29,19 @@ export const SellerAnalyticsService = {
         (o) => !['delivered', 'cancelled'].includes(o.status)
       );
 
-      const totalRevenue = completedOrders.reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
+      const totalRevenue = completedOrders.reduce((sum, o) => sum + parseFloat(o.final_price || '0'), 0);
       const averageOrderValue = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
 
       // Get commission paid
+      const escrowAccountIds = completedOrders
+        .map((o) => o.escrow_account_id)
+        .filter(Boolean) as string[];
+      
       const { data: commissions, error: commissionsError } = await supabase
         .from('platform_commissions')
         .select('total_platform_fee, status')
         .eq('status', 'collected')
-        .in(
-          'escrow_account_id',
-          completedOrders.map((o) => o.id).filter(Boolean) as string[]
-        );
+        .in('escrow_account_id', escrowAccountIds);
 
       const totalCommissionPaid =
         commissions?.reduce((sum, c) => sum + parseFloat(c.total_platform_fee || '0'), 0) || 0;
@@ -101,7 +102,7 @@ export const SellerAnalyticsService = {
         );
       });
 
-      const revenue = monthOrders.reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
+      const revenue = monthOrders.reduce((sum, o) => sum + parseFloat(o.final_price || '0'), 0);
       last6Months.push({ month: monthKey, revenue });
     }
 
@@ -109,29 +110,22 @@ export const SellerAnalyticsService = {
   },
 
   async getTopProducts(sellerId: string, products: any[]): Promise<Array<{ id: string; name: string; sales: number; revenue: number }>> {
-    const { data: orderItems, error } = await supabase
-      .from('order_items')
-      .select('product_id, quantity, price')
-      .in(
-        'order_id',
-        (
-          await supabase
-            .from('orders')
-            .select('id')
-            .eq('seller_id', sellerId)
-            .eq('status', 'delivered')
-        ).data?.map((o) => o.id) || []
-      );
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('product_id, quantity, final_price')
+      .eq('seller_id', sellerId)
+      .eq('status', 'delivered');
 
     if (error) return [];
 
     const productStats = new Map<string, { sales: number; revenue: number }>();
 
-    orderItems?.forEach((item) => {
-      const existing = productStats.get(item.product_id) || { sales: 0, revenue: 0 };
-      productStats.set(item.product_id, {
-        sales: existing.sales + (item.quantity || 1),
-        revenue: existing.revenue + parseFloat(item.price || '0') * (item.quantity || 1),
+    orders?.forEach((order) => {
+      const productId = order.product_id;
+      const existing = productStats.get(productId) || { sales: 0, revenue: 0 };
+      productStats.set(productId, {
+        sales: existing.sales + (order.quantity || 1),
+        revenue: existing.revenue + parseFloat(order.final_price || '0'),
       });
     });
 

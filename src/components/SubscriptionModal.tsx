@@ -11,7 +11,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { X } from 'lucide-react-native';
 import {
   useSubscription,
@@ -30,16 +29,13 @@ const PLANS = [
     originalPrice: null,
     period: 'Vĩnh viễn',
     description: 'Khám phá thú cưng cơ bản',
-    color: '#8E8E93',
-    gradient: ['#8E8E93', '#A8A8A8'],
+    color: '#9CA3AF',
+    gradient: ['#9CA3AF', '#6B7280'],
     features: [
       'Tạo tối đa 4 pet objects',
       'Mỗi pet tối đa 4 ảnh',
       'Xem 5 thú cưng mỗi ngày',
-      'Liên hệ cơ bản',
-      'Hỗ trợ email',
     ],
-    limitations: ['Không có tính năng nổi bật', 'Không có analytics'],
     petLimit: 4,
     imagesPerPet: 4,
     popular: false,
@@ -51,18 +47,14 @@ const PLANS = [
     originalPrice: 149000,
     period: '/tháng',
     description: 'Trải nghiệm nâng cao',
-    color: '#007AFF',
-    gradient: ['#007AFF', '#5856D6'],
+    color: '#FF6B6B',
+    gradient: ['#FF6B6B', '#FF8A8A'],
     features: [
       'Tạo tối đa 6 pet objects',
       'Mỗi pet tối đa 4 ảnh',
       'Xem không giới hạn',
-      'Liên hệ ưu tiên',
-      'Ẩn số điện thoại',
       'Pet nổi bật',
-      'Hỗ trợ ưu tiên',
     ],
-    limitations: [],
     petLimit: 6,
     imagesPerPet: 4,
     popular: true,
@@ -74,22 +66,17 @@ const PLANS = [
     originalPrice: 299000,
     period: '/tháng',
     description: 'Chuyên nghiệp',
-    color: '#FF9500',
-    gradient: ['#FF9500', '#FF6B35'],
+    color: '#F59E0B',
+    gradient: ['#F59E0B', '#FBBF24'],
     features: [
       'Tạo tối đa 9 pet objects',
       'Mỗi pet tối đa 4 ảnh',
       'Mọi tính năng Premium',
       'Analytics chi tiết',
-      'Hỗ trợ 24/7',
-      'Badge Pro',
-      'Tính năng độc quyền',
-      'API access',
     ],
-    limitations: [],
     petLimit: 9,
     imagesPerPet: 4,
-    popular: true,
+    popular: false,
   },
 ];
 
@@ -256,13 +243,15 @@ export function SubscriptionModal({ visible, onClose }: SubscriptionModalProps) 
                     disabled={isProcessing || isCurrentPlan}
                     activeOpacity={0.8}
                   >
-                    <LinearGradient
-                      colors={
-                        isCurrentPlan
-                          ? (['#34C759', '#30D158'] as const)
-                          : (plan.gradient as any)
-                      }
-                      style={styles.planGradient}
+                    <View
+                      style={[
+                        styles.planGradient,
+                        {
+                          backgroundColor: isCurrentPlan
+                            ? '#10B981'
+                            : plan.color,
+                        },
+                      ]}
                     >
                       <View style={styles.planHeader}>
                         <Text style={styles.planName}>{plan.name}</Text>
@@ -299,7 +288,7 @@ export function SubscriptionModal({ visible, onClose }: SubscriptionModalProps) 
                       )}
 
                       <Text style={styles.planDescription}>{plan.description}</Text>
-                    </LinearGradient>
+                    </View>
 
                     <View style={styles.featuresContainer}>
                       <Text style={styles.featuresTitle}>Tính năng bao gồm:</Text>
@@ -351,86 +340,116 @@ export function SubscriptionModal({ visible, onClose }: SubscriptionModalProps) 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
     zIndex: 1000,
   },
   modalContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
+    backgroundColor: '#FAFAFA',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '85%',
     paddingBottom: 40,
     zIndex: 1001,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '800',
+    color: '#1F2937',
+    letterSpacing: -0.3,
   },
   closeButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   planWrapper: {
-    marginBottom: 20,
+    marginBottom: 16,
     position: 'relative',
   },
   popularBadge: {
     position: 'absolute',
-    top: -8,
+    top: -10,
     left: 20,
     right: 20,
-    backgroundColor: '#FF3B30',
-    paddingVertical: 6,
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     alignItems: 'center',
     zIndex: 1,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   popularBadgeText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   planCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
   },
   planCardCurrent: {
-    borderColor: '#34C759',
+    borderColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOpacity: 0.2,
   },
   planCardSelected: {
-    borderColor: colors.primary,
+    borderColor: '#FF6B6B',
+    shadowColor: '#FF6B6B',
+    shadowOpacity: 0.2,
   },
   planCardPopular: {
-    borderColor: colors.primary,
+    borderColor: '#FF6B6B',
+    shadowColor: '#FF6B6B',
+    shadowOpacity: 0.2,
   },
   planGradient: {
     padding: 24,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
   },
   planHeader: {
     flexDirection: 'row',
@@ -439,20 +458,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   planName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   currentBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   currentBadgeText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   priceContainer: {
     flexDirection: 'row',
@@ -460,19 +480,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   price: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
   priceCurrency: {
-    fontSize: 20,
-    color: '#fff',
+    fontSize: 18,
+    color: '#FFFFFF',
     marginLeft: 4,
+    fontWeight: '700',
   },
   pricePeriod: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.8)',
     marginLeft: 8,
+    fontWeight: '600',
   },
   originalPriceContainer: {
     flexDirection: 'row',
@@ -481,33 +504,36 @@ const styles = StyleSheet.create({
   },
   originalPrice: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 255, 255, 0.6)',
     textDecorationLine: 'line-through',
+    fontWeight: '500',
   },
   discountBadge: {
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 8,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
     marginLeft: 8,
   },
   discountText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   planDescription: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 24,
+    fontWeight: '500',
   },
   featuresContainer: {
     padding: 24,
+    paddingTop: 20,
   },
   featuresTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '700',
+    color: '#1F2937',
     marginBottom: 16,
   },
   featureItem: {
@@ -517,37 +543,46 @@ const styles = StyleSheet.create({
   },
   featureCheckmark: {
     fontSize: 16,
-    color: '#34C759',
+    color: '#10B981',
     marginRight: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   featureText: {
     fontSize: 14,
-    color: colors.text,
+    color: '#374151',
     flex: 1,
     lineHeight: 20,
+    fontWeight: '500',
   },
   selectButton: {
     margin: 24,
     marginTop: 0,
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   selectButtonDisabled: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
   },
   selectButtonPopular: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#FF6B6B',
   },
   selectButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   selectButtonTextDisabled: {
-    color: colors.textSecondary,
+    color: '#9CA3AF',
   },
 });
 

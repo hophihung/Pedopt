@@ -8,8 +8,8 @@ import {
   Image,
   RefreshControl,
   ActivityIndicator,
-  Modal,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -18,19 +18,47 @@ import {
   Heart,
   MessageCircle,
   Star,
-  Crown,
   User,
   Bell,
+  Calendar,
+  Shield,
+  Zap,
+  TrendingUp,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useProfile } from '../../../src/features/profile/context/ProfileContext';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useSubscription } from '../../../contexts/SubscriptionContext';
-import { SubscriptionManager } from '../../../src/components/SubscriptionManager';
 import { useRouter, usePathname } from 'expo-router';
 import { colors } from '@/src/theme/colors';
 import { useNotifications } from '@/src/features/notifications/hooks/useNotifications';
 import { CommissionTierCard } from '@/src/features/subscription/components/CommissionTierCard';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Stats Card Component
+const StatsCard = ({ icon, title, value, subtitle, color }: any) => (
+  <View style={styles.statsCard}>
+    <View style={[styles.statsIcon, { backgroundColor: color + '20' }]}>
+      {icon}
+    </View>
+    <View style={styles.statsContent}>
+      <Text style={styles.statsValue}>{value}</Text>
+      <Text style={styles.statsTitle}>{title}</Text>
+      {subtitle && <Text style={styles.statsSubtitle}>{subtitle}</Text>}
+    </View>
+  </View>
+);
+
+// Quick Action Button Component
+const QuickActionButton = ({ icon, title, subtitle, onPress, color = colors.primary }: any) => (
+  <TouchableOpacity style={styles.quickActionCard} onPress={onPress} activeOpacity={0.8}>
+    <View style={[styles.quickActionIcon, { backgroundColor: color + '15' }]}>
+      {icon}
+    </View>
+    <Text style={styles.quickActionTitle}>{title}</Text>
+    {subtitle && <Text style={styles.quickActionSubtitle}>{subtitle}</Text>}
+  </TouchableOpacity>
+);
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -38,9 +66,8 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { profile, stats, loading, refreshing, refreshProfile } = useProfile();
   const { signOut } = useAuth();
-  const { subscription, refreshSubscription } = useSubscription();
   const { stats: notificationStats } = useNotifications();
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  
   const isSeller = profile?.role === 'seller';
   const emailLower = profile?.email?.toLowerCase();
   const isAdmin = Boolean(profile?.role === 'admin' || (emailLower && emailLower.includes('admin')));
@@ -50,16 +77,40 @@ export default function ProfileScreen() {
   const tabBarMarginBottom = Platform.OS === 'ios' ? 25 : 16;
   const bottomPadding = tabBarHeight + tabBarMarginBottom + insets.bottom + 10;
 
-  // Refresh subscription when profile screen is focused
-  useEffect(() => {
-    refreshSubscription();
-  }, [pathname]);
+  // Get theme colors based on role
+  const getThemeColors = () => {
+    if (isAdmin) {
+      return {
+        primary: '#FF3B30',
+        secondary: '#FF6B6B',
+        gradient: ['#FF3B30', '#FF6B6B'],
+        accent: '#FFE5E5',
+      };
+    } else if (isSeller) {
+      return {
+        primary: '#FF9500',
+        secondary: '#FFB84D',
+        gradient: ['#FF9500', '#FFB84D'],
+        accent: '#FFF4E6',
+      };
+    } else {
+      // User - Sử dụng màu hồng cùng tone với match app
+      return {
+        primary: '#FF6B6B',
+        secondary: '#FF8E8E',
+        gradient: ['#FF6B6B', '#FF8E8E'],
+        accent: '#FFE5E5',
+      };
+    }
+  };
+
+  const themeColors = getThemeColors();
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF5A75" />
+          <ActivityIndicator size="large" color={themeColors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -73,317 +124,350 @@ export default function ProfileScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshProfile} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header with Gradient */}
-        <View style={styles.headerGradient}>
-          <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>Cá nhân</Text>
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                activeOpacity={0.8}
-                onPress={() => router.push('/(tabs)/me/notifications' as any)}
+        {/* Role-based Header */}
+        <LinearGradient
+          colors={themeColors.gradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.logoRow}>
+              <Text style={styles.logoText}>Adopet</Text>
+              {isAdmin && <Text style={styles.adminBadge}>ADMIN</Text>}
+              {isSeller && <Text style={styles.sellerBadge}>SELLER</Text>}
+            </View>
+            <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/(tabs)/me/settings')}>
+              <Settings size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+
+        {/* Profile Card with proper spacing */}
+        <View style={[styles.profileCard, { borderTopColor: themeColors.primary }]}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{
+                  uri: profile?.avatar_url || 'https://via.placeholder.com/120',
+                }}
+                style={styles.avatar}
+              />
+              <TouchableOpacity 
+                style={[styles.editAvatarButton, { backgroundColor: themeColors.primary }]}
+                onPress={() => router.push('/(tabs)/me/edit-profile')}
               >
-                <Bell size={20} color="#FFFFFF" strokeWidth={2.5} />
-                {notificationStats.unread > 0 && (
-                  <View style={styles.iconBadge}>
-                    <Text style={styles.iconBadgeText}>
-                      {notificationStats.unread > 9
-                        ? '9+'
-                        : notificationStats.unread}
+                <Edit size={14} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>
+                {profile?.full_name || 'Unknown User'}
+              </Text>
+              <Text style={styles.profileEmail}>{profile?.email || 'No email'}</Text>
+              
+              <View style={styles.roleContainer}>
+                <View style={[styles.roleTag, { backgroundColor: themeColors.primary }]}>
+                  <Text style={styles.roleText}>
+                    {isAdmin ? 'Admin' : isSeller ? 'Seller' : 'User'}
+                  </Text>
+                </View>
+                {profile?.created_at && (
+                  <View style={[styles.roleTag, { backgroundColor: '#34C759' }]}>
+                    <Calendar size={12} color="#fff" />
+                    <Text style={styles.roleText}>
+                      {new Date(profile.created_at).getFullYear()}
                     </Text>
                   </View>
                 )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                activeOpacity={0.8}
-                onPress={() => router.push('/(tabs)/me/settings')}
-              >
-                <Settings size={20} color="#FFFFFF" strokeWidth={2.5} />
-              </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Profile Info */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Image
-              source={{
-                uri: profile?.avatar_url || 'https://via.placeholder.com/120',
-              }}
-              style={styles.avatar}
+        {/* Role-specific Stats Grid - Only for Admin */}
+        {isAdmin && (
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>Thống kê</Text>
+            <View style={styles.statsGrid}>
+              <StatsCard
+                icon={<Shield size={20} color="#FF3B30" />}
+                title="Reports"
+                value={stats?.reports || 0}
+                color="#FF3B30"
+              />
+              <StatsCard
+                icon={<User size={20} color="#007AFF" />}
+                title="Users"
+                value={stats?.users || 0}
+                color="#007AFF"
+              />
+              <StatsCard
+                icon={<MessageCircle size={20} color="#FF9500" />}
+                title="Posts"
+                value={stats?.posts || 0}
+                color="#FF9500"
+              />
+              <StatsCard
+                icon={<TrendingUp size={20} color="#34C759" />}
+                title="Activity"
+                value={stats?.activity || 0}
+                subtitle="Hôm nay"
+                color="#34C759"
+              />
+            </View>
+          </View>
+        )}
+        <View style={styles.quickActionsSection}>
+          <Text style={styles.sectionTitle}>Thao tác nhanh</Text>
+          <View style={styles.quickActionsGrid}>
+            {/* Common Actions */}
+            <QuickActionButton
+              icon={<User size={20} color={themeColors.primary} />}
+              title="Chỉnh sửa"
+              subtitle="Cập nhật thông tin"
+              onPress={() => router.push('/(tabs)/me/edit-profile')}
+              color={themeColors.primary}
             />
-            <TouchableOpacity style={styles.editButton}>
-              <Edit size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.name}>
-            {profile?.full_name || 'Unknown User'}
-          </Text>
-          <Text style={styles.bio}>{profile?.email || 'No email'}</Text>
-          <View style={styles.roleTag}>
-            <Text style={styles.roleText}>
-              {profile?.role === 'seller' ? '🏪 Seller' : '👤 User'}
-            </Text>
-          </View>
-
-          {/* Subscription Status */}
-          <TouchableOpacity
-            style={styles.subscriptionCard}
-            onPress={() => setShowSubscriptionModal(true)}
-          >
-            <View style={styles.subscriptionContent}>
-              <Crown size={20} color="#FF9500" />
-              <View style={styles.subscriptionInfo}>
-                <Text style={styles.subscriptionTitle}>
-                  Gói {subscription?.plan?.toUpperCase() || 'FREE'}
-                </Text>
-                <Text style={styles.subscriptionSubtitle}>
-                  {subscription?.status === 'active'
-                    ? 'Đang hoạt động'
-                    : 'Chưa đăng ký'}
-                </Text>
-              </View>
-              <Text style={styles.subscriptionArrow}>›</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Heart size={20} color="#FF5A75" />
-            <Text style={styles.statNumber}>{stats?.matches || 0}</Text>
-            <Text style={styles.statLabel}>Matches</Text>
-          </View>
-          <View style={styles.statItem}>
-            <MessageCircle size={20} color="#FF5A75" />
-            <Text style={styles.statNumber}>{stats?.posts || 0}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Star size={20} color="#FF5A75" />
-            <Text style={styles.statNumber}>{stats?.favorites || 0}</Text>
-            <Text style={styles.statLabel}>Favorites</Text>
-          </View>
-        </View>
-
-        {/* Profile Details */}
-        <View style={styles.detailsContainer}>
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>ID</Text>
-            <Text style={styles.detailValue}>
-              {profile?.id.substring(0, 8)}...
-            </Text>
-          </View>
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Member since</Text>
-            <Text style={styles.detailValue}>
-              {profile?.created_at
-                ? new Date(profile.created_at).toLocaleDateString()
-                : 'N/A'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          {/* Common Menu */}
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Edit Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/(tabs)/pets/my-pets' as any)}
-          >
-            <Text style={styles.menuText}>My Pets</Text>
-          </TouchableOpacity>
-
-          {/* Seller Section */}
-          {isSeller ? (
-            <>
-              <View style={styles.sectionDivider} />
-              <Text style={styles.menuSectionLabel}>🏪 Seller Tools</Text>
-              
-              {/* Quick Actions */}
-              <View style={styles.quickActionsContainer}>
-                <TouchableOpacity
-                  style={styles.quickActionButton}
-                  onPress={() => router.push('/products/create' as any)}
-                >
-                  <View style={styles.quickActionIcon}>
-                    <Text style={styles.quickActionIconText}>+</Text>
-                  </View>
-                  <Text style={styles.quickActionText}>Tạo sản phẩm</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.quickActionButton}
-                  onPress={() => router.push('/(tabs)/me/dashboard' as any)}
-                >
-                  <View style={[styles.quickActionIcon, { backgroundColor: colors.primaryLight + '20' }]}>
-                    <Text style={[styles.quickActionIconText, { color: colors.primary }]}>📊</Text>
-                  </View>
-                  <Text style={styles.quickActionText}>Dashboard</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Commission Tier Card */}
-              <View style={styles.commissionCardContainer}>
-                <CommissionTierCard
-                  reputationPoints={profile?.reputation_points || 0}
-                  showNextTier={true}
+            <QuickActionButton
+              icon={<Heart size={20} color="#FF5A75" />}
+              title="Pets của tôi"
+              subtitle="Quản lý thú cưng"
+              onPress={() => router.push('/(tabs)/pets/my-pets' as any)}
+              color="#FF5A75"
+            />
+            
+            {/* Role-specific Actions */}
+            {isAdmin && (
+              <>
+                <QuickActionButton
+                  icon={<Shield size={20} color="#FF3B30" />}
+                  title="Moderation"
+                  subtitle="Kiểm duyệt nội dung"
+                  onPress={() => router.push('/admin/reels' as any)}
+                  color="#FF3B30"
                 />
-              </View>
+                <QuickActionButton
+                  icon={<TrendingUp size={20} color="#34C759" />}
+                  title="Analytics"
+                  subtitle="Thống kê hệ thống"
+                  onPress={() => router.push('/admin/analytics' as any)}
+                  color="#34C759"
+                />
+              </>
+            )}
+            
+            {isSeller && (
+              <>
+                <QuickActionButton
+                  icon={<Zap size={20} color="#FF9500" />}
+                  title="Tạo sản phẩm"
+                  subtitle="Thêm sản phẩm mới"
+                  onPress={() => router.push('/products/create' as any)}
+                  color="#FF9500"
+                />
+                <QuickActionButton
+                  icon={<TrendingUp size={20} color="#34C759" />}
+                  title="Dashboard"
+                  subtitle="Xem thống kê"
+                  onPress={() => router.push('/(tabs)/me/dashboard' as any)}
+                  color="#34C759"
+                />
+              </>
+            )}
+          </View>
+        </View>
 
-              {/* Seller Menu Items */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/products/manage' as any)}
-              >
-                <View style={styles.menuRow}>
-                  <Text style={styles.menuText}>Quản lý sản phẩm</Text>
-                  <Text style={styles.menuSubtext}>Xem, sửa, xóa sản phẩm</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/orders/manage' as any)}
-              >
-                <View style={styles.menuRow}>
-                  <Text style={styles.menuText}>Quản lý đơn hàng</Text>
-                  <Text style={styles.menuSubtext}>Xử lý đơn hàng của bạn</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/(tabs)/me/bank-accounts' as any)}
-              >
-                <View style={styles.menuRow}>
-                  <Text style={styles.menuText}>Tài khoản ngân hàng</Text>
-                  <Text style={styles.menuSubtext}>Nhận thanh toán</Text>
-                </View>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              {/* User Section */}
-              <View style={styles.sectionDivider} />
-              <Text style={styles.menuSectionLabel}>👤 User Features</Text>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => router.push('/(tabs)/me/rewards' as any)}
-              >
-                <View style={styles.menuRow}>
-                  <Text style={styles.menuText}>Điểm thưởng</Text>
-                  <Text style={styles.menuSubtext}>Tích điểm và đổi quà</Text>
-                </View>
-              </TouchableOpacity>
-            </>
-          )}
-          {/* Common Features */}
-          <View style={styles.sectionDivider} />
-          <Text style={styles.menuSectionLabel}>⚙️ Settings</Text>
-          
-          {isSeller && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => setShowSubscriptionModal(true)}
-            >
-              <View style={styles.menuRow}>
-                <Text style={styles.menuText}>Subscription</Text>
-                <Text style={styles.menuSubtext}>Quản lý gói đăng ký</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/(tabs)/me/notifications' as any)}
-          >
-            <View style={styles.menuRow}>
-              <Text style={styles.menuText}>Thông báo</Text>
-              {notificationStats.unread > 0 && (
-                <View style={styles.menuBadge}>
-                  <Text style={styles.menuBadgeText}>
-                    {notificationStats.unread > 9
-                      ? '9+'
-                      : notificationStats.unread}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/(tabs)/me/settings')}
-          >
-            <View style={styles.menuRow}>
-              <Text style={styles.menuText}>Cài đặt</Text>
-              <Text style={styles.menuSubtext}>Ngôn ngữ, tiền tệ, v.v.</Text>
-            </View>
-          </TouchableOpacity>
-          {isAdmin && (
-            <>
-              <Text style={styles.menuSectionLabel}>Admin</Text>
+        {/* Role-specific Sections */}
+        {isAdmin && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>Admin Tools</Text>
+            <View style={styles.menuList}>
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => router.push('/admin/reels' as any)}
               >
-                <Text style={styles.menuText}>Duyệt reels</Text>
+                <View style={[styles.menuIcon, { backgroundColor: '#FFE5E5' }]}>
+                  <Shield size={16} color="#FF3B30" />
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={styles.menuTitle}>Duyệt reels</Text>
+                  <Text style={styles.menuSubtitle}>Quản lý nội dung</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => router.push('/admin/payouts' as any)}
               >
-                <Text style={styles.menuText}>Quản lý payout</Text>
+                <View style={[styles.menuIcon, { backgroundColor: '#E6F3FF' }]}>
+                  <Text style={styles.menuIconText}>💰</Text>
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={styles.menuTitle}>Quản lý payout</Text>
+                  <Text style={styles.menuSubtitle}>Xử lý thanh toán</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => router.push('/admin/disputes' as any)}
               >
-                <Text style={styles.menuText}>Quản lý dispute</Text>
+                <View style={[styles.menuIcon, { backgroundColor: '#FFF4E6' }]}>
+                  <Text style={styles.menuIconText}>⚖️</Text>
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={styles.menuTitle}>Quản lý dispute</Text>
+                  <Text style={styles.menuSubtitle}>Giải quyết tranh chấp</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
               </TouchableOpacity>
-            </>
-          )}
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Settings</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Help & Support</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.menuItem, styles.signOutButton]}
-            onPress={signOut}
-          >
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            </View>
+          </View>
+        )}
 
-      {/* Subscription Modal */}
-      <Modal
-        visible={showSubscriptionModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowSubscriptionModal(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Subscription</Text>
+        {isSeller && (
+          <>
+            {/* Commission Tier Card */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Hạng uy tín</Text>
+              <CommissionTierCard
+                reputationPoints={profile?.reputation_points || 0}
+                showNextTier={true}
+              />
+            </View>
+
+            {/* Seller Tools */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Công cụ bán hàng</Text>
+              <View style={styles.menuList}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => router.push('/products/manage' as any)}
+                >
+                  <View style={[styles.menuIcon, { backgroundColor: '#FFF4E6' }]}>
+                    <Text style={styles.menuIconText}>📦</Text>
+                  </View>
+                  <View style={styles.menuContent}>
+                    <Text style={styles.menuTitle}>Quản lý sản phẩm</Text>
+                    <Text style={styles.menuSubtitle}>Xem, sửa, xóa sản phẩm</Text>
+                  </View>
+                  <Text style={styles.menuArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => router.push('/orders/manage' as any)}
+                >
+                  <View style={[styles.menuIcon, { backgroundColor: '#E6F3FF' }]}>
+                    <Text style={styles.menuIconText}>📋</Text>
+                  </View>
+                  <View style={styles.menuContent}>
+                    <Text style={styles.menuTitle}>Quản lý đơn hàng</Text>
+                    <Text style={styles.menuSubtitle}>Xử lý đơn hàng của bạn</Text>
+                  </View>
+                  <Text style={styles.menuArrow}>›</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => router.push('/(tabs)/me/bank-accounts' as any)}
+                >
+                  <View style={[styles.menuIcon, { backgroundColor: '#E8F5E8' }]}>
+                    <Text style={styles.menuIconText}>🏦</Text>
+                  </View>
+                  <View style={styles.menuContent}>
+                    <Text style={styles.menuTitle}>Tài khoản ngân hàng</Text>
+                    <Text style={styles.menuSubtitle}>Nhận thanh toán</Text>
+                  </View>
+                  <Text style={styles.menuArrow}>›</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* Settings Section - Separated with clear spacing */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>Cài đặt & Hỗ trợ</Text>
+          <View style={styles.menuList}>
             <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowSubscriptionModal(false)}
+              style={styles.menuItem}
+              onPress={() => router.push('/(tabs)/me/notifications' as any)}
             >
-              <Text style={styles.closeButtonText}>Đóng</Text>
+              <View style={[styles.menuIcon, { backgroundColor: '#E6F3FF' }]}>
+                <Bell size={16} color="#007AFF" />
+              </View>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>Thông báo</Text>
+                <Text style={styles.menuSubtitle}>Quản lý thông báo</Text>
+              </View>
+              {notificationStats.unread > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {notificationStats.unread > 9 ? '9+' : notificationStats.unread}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+
+            {!isSeller && !isAdmin && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => router.push('/(tabs)/me/rewards' as any)}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: '#FFF4E6' }]}>
+                  <Star size={16} color="#FF9500" />
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={styles.menuTitle}>Điểm thưởng</Text>
+                  <Text style={styles.menuSubtitle}>Tích điểm và đổi quà</Text>
+                </View>
+                <Text style={styles.menuArrow}>›</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => router.push('/(tabs)/me/settings')}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#F8F9FA' }]}>
+                <Settings size={16} color="#8E8E93" />
+              </View>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>Cài đặt</Text>
+                <Text style={styles.menuSubtitle}>Ngôn ngữ, tiền tệ, v.v.</Text>
+              </View>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E8F5E8' }]}>
+                <Text style={styles.menuIconText}>❓</Text>
+              </View>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>Trợ giúp & Hỗ trợ</Text>
+                <Text style={styles.menuSubtitle}>FAQ, liên hệ hỗ trợ</Text>
+              </View>
+              <Text style={styles.menuArrow}>›</Text>
             </TouchableOpacity>
           </View>
-          <SubscriptionManager
-            onClose={() => setShowSubscriptionModal(false)}
-          />
-        </SafeAreaView>
-      </Modal>
+        </View>
+
+        {/* Sign Out */}
+        <TouchableOpacity
+          style={[styles.signOutButton, { borderColor: themeColors.primary + '30' }]}
+          onPress={signOut}
+        >
+          <Text style={[styles.signOutText, { color: themeColors.primary }]}>Đăng xuất</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -391,7 +475,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
@@ -401,287 +485,429 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  
+  // Header Styles
   headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 56 : 46,
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    zIndex: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
   },
-  headerRow: {
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerActions: {
+  logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  logoIcon: {
+    fontSize: 28,
   },
-  headerTitle: {
+  logoText: {
     fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  adminBadge: {
+    fontSize: 10,
     fontWeight: '700',
     color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
   },
-  iconButton: {
+  sellerBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  settingsButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    position: 'relative',
   },
-  iconBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#FF3B30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  iconBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: 20,
+
+  // Profile Card Styles - Fixed spacing
+  profileCard: {
     backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 16, // Changed from -10 to 16 to prevent overlap
+    borderRadius: 24,
+    padding: 24,
+    borderTopWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginRight: 16,
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#f0f0f0',
   },
-  editButton: {
+  editAvatarButton: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#FF6B6B',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    bottom: -2,
+    right: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#fff',
   },
-  name: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 4,
+  profileInfo: {
+    flex: 1,
   },
-  bio: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  roleTag: {
-    backgroundColor: '#FFF0F2',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 8,
-  },
-  roleText: {
-    fontSize: 13,
-    color: '#FF5A75',
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-    marginHorizontal: 20,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
+  profileName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333',
-    marginTop: 8,
+    color: '#1A1A1A',
+    marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
+  profileEmail: {
+    fontSize: 14,
     color: '#666',
-    marginTop: 4,
+    marginBottom: 12,
   },
-  detailsContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
-    padding: 16,
-  },
-  detailItem: {
+  roleContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
+    gap: 8,
   },
-  detailLabel: {
-    fontSize: 14,
-    color: '#666',
+  roleTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
   },
-  detailValue: {
-    fontSize: 14,
-    color: '#333',
+  roleIcon: {
+    fontSize: 12,
+  },
+  roleText: {
+    fontSize: 12,
+    color: '#fff',
     fontWeight: '600',
   },
-  menuContainer: {
+
+  // Enhanced Subscription Card Styles
+  subscriptionCard: {
+    marginHorizontal: 20,
     marginTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  menuItem: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  subscriptionGradient: {
+    padding: 20,
   },
-  menuText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  menuSectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
-    marginTop: 24,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 16,
-  },
-  quickActionsContainer: {
+  subscriptionHeader: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  quickActionButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+  subscriptionTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
+  },
+  subscriptionIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  subscriptionTitleContainer: {
+    flex: 1,
+  },
+  subscriptionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  subscriptionSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  subscriptionStatus: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  subscriptionStatusText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  subscriptionContent: {
+    marginBottom: 16,
+  },
+  subscriptionFeatures: {
+    marginBottom: 12,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  featureDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginRight: 8,
+  },
+  featureText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  subscriptionExpiry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  subscriptionExpiryText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  subscriptionFooter: {
+    alignItems: 'flex-end',
+  },
+  subscriptionCTA: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+  },
+
+  // Stats Section - Fixed spacing
+  statsSection: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    flex: 1,
+    minWidth: (SCREEN_WIDTH - 64) / 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  statsIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  statsContent: {
+    flex: 1,
+  },
+  statsValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 2,
+  },
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  statsSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+
+  // Quick Actions Styles
+  quickActionsSection: {
+    paddingHorizontal: 20,
+    marginTop: 32, // Tăng từ 24 lên 32
+    marginBottom: 16, // Thêm marginBottom
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  quickActionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    flex: 1,
+    minWidth: (SCREEN_WIDTH - 64) / 2,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   quickActionIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primaryLight + '20',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  quickActionIconText: {
-    fontSize: 24,
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  quickActionText: {
-    fontSize: 13,
+  quickActionTitle: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#1A1A1A',
     textAlign: 'center',
   },
-  menuRow: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  menuSubtext: {
+  quickActionSubtitle: {
     fontSize: 12,
-    color: '#999',
-    marginTop: 4,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 2,
   },
-  menuBadge: {
+
+  // Section Styles
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginTop: 32, // Tăng từ 24 lên 32
+    marginBottom: 8, // Thêm marginBottom
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 16, // Tăng từ 12 lên 16
+  },
+
+  // Settings Section - Special spacing
+  settingsSection: {
+    paddingHorizontal: 20,
+    marginTop: 40, // Tăng spacing đặc biệt cho settings
+    marginBottom: 16,
+  },
+
+  // Menu List Styles
+  menuList: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 8, // Thêm marginBottom
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+    minHeight: 64, // Đảm bảo height tối thiểu
+  },
+  menuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  menuIconText: {
+    fontSize: 16,
+  },
+  menuContent: {
+    flex: 1,
+    paddingRight: 8, // Thêm padding để tránh ghi đè với arrow
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  menuSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  menuArrow: {
+    fontSize: 18,
+    color: '#C7C7CC',
+    fontWeight: '300',
+    minWidth: 20, // Đảm bảo width tối thiểu cho arrow
+  },
+  notificationBadge: {
     backgroundColor: '#FF3B30',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
+    marginRight: 8,
   },
-  menuBadgeText: {
+  notificationBadgeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
   },
-  commissionCardContainer: {
-    marginHorizontal: 0,
-    marginVertical: 8,
-  },
+
+  // Sign Out Button - Fixed positioning
   signOutButton: {
-    marginTop: 10,
-    backgroundColor: '#FFF0F2',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
   },
   signOutText: {
     fontSize: 16,
-    color: '#FF5A75',
     fontWeight: '600',
   },
-  subscriptionCard: {
-    backgroundColor: '#FFF8F0',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#FFE4CC',
-  },
-  subscriptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  subscriptionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  subscriptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF9500',
-  },
-  subscriptionSubtitle: {
-    fontSize: 14,
-    color: '#8B5A00',
-    marginTop: 2,
-  },
-  subscriptionArrow: {
-    fontSize: 20,
-    color: '#FF9500',
-    fontWeight: '300',
-  },
+
+  // Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: '#000',

@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type PaymentMethod = 'payos' | 'momo' | 'zalopay' | 'bank_transfer' | 'cod';
+export type PaymentMethod = 'payos' | 'momo' | 'zalopay' | 'bank_transfer' | 'cod' | 'e_wallet';
 
 export interface PaymentMethodConfig {
   id: PaymentMethod;
@@ -33,6 +33,13 @@ export const PAYMENT_METHODS: PaymentMethodConfig[] = [
     description: 'Thanh toán qua ZaloPay',
   },
   {
+    id: 'e_wallet',
+    name: 'Ví điện tử',
+    icon: '💰',
+    enabled: true,
+    description: 'Thanh toán qua ví điện tử',
+  },
+  {
     id: 'bank_transfer',
     name: 'Chuyển khoản',
     icon: '🏦',
@@ -47,6 +54,22 @@ export const PAYMENT_METHODS: PaymentMethodConfig[] = [
     description: 'Thanh toán khi nhận hàng',
   },
 ];
+
+// Map payment method IDs to database values
+export const mapPaymentMethodToDb = (methodId: PaymentMethod): 'cod' | 'bank_transfer' | 'e_wallet' | 'payos' | 'momo' | 'zalopay' => {
+  switch (methodId) {
+    case 'payos':
+    case 'momo':
+    case 'zalopay':
+      return methodId; // Sử dụng trực tiếp sau khi update constraint
+    case 'bank_transfer':
+    case 'cod':
+    case 'e_wallet':
+      return methodId;
+    default:
+      return 'cod'; // fallback
+  }
+};
 
 export const PaymentMethodsService = {
   async getAvailableMethods(): Promise<PaymentMethodConfig[]> {

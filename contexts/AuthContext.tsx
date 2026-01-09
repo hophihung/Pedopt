@@ -4,16 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabaseClient';
 import { router } from 'expo-router';
 import { getClientIPWithRetry } from '../src/utils/ipUtils';
-
-interface Profile {
-  id: string;
-  role: 'user' | 'seller';
-  email: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
+import { Profile } from '../src/features/profile/types/profile.types';
+import { SocialAuthService } from '../src/features/auth/services/social-auth.service';
+import { OAuthHandlerService } from '../src/features/auth/services/oauth-handler.service';
+import { GoogleAuthService } from '@/src/features/auth/services/google-auth.service';
 
 interface AuthContextType {
   session: Session | null;
@@ -46,17 +40,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const status = await AsyncStorage.getItem('onboarding_completed');
         setHasCompletedOnboarding(status === 'true');
-      } catch (error) {
-        console.error('Error loading onboarding status:', error);
-      }
+      } catch (error) {}
     };
 
     loadOnboardingStatus();
 
     // Timeout fallback to prevent infinite loading
-    const timeout = setTimeout(() => {
-      console.warn('Auth loading timeout - setting loading to false');
-      setLoading(false);
+    const timeout = setTimeout(() => {setLoading(false);
     }, 5000);
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -69,9 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     }).catch((error) => {
-      clearTimeout(timeout);
-      console.error('Error getting session:', error);
-      setLoading(false);
+      clearTimeout(timeout);setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -91,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('🔍 Fetching profile for:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -103,18 +93,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setProfile(data);
       
-      // Nếu là seller và chưa có subscription, đảm bảo tạo free subscription
+      // Background tasks - don't block UI
       if (data && data.role === 'seller') {
-        try {
-          await supabase.rpc('ensure_seller_has_subscription', {
-            user_profile_id: userId
-          });
-        } catch (subscriptionError) {
-          console.error('Error ensuring seller subscription:', subscriptionError);
-        }
+        // Run in background, don't await
+        supabase.rpc('ensure_seller_has_subscription', {
+          user_profile_id: userId
+        }).catch(() => {}); // Ignore errors
       }
+
+      // Background social auth handling
+      SocialAuthService.handleSocialPostLogin(userId).catch(() => {}); // Ignore errors
+      
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Profile fetch error:', error);
       setProfile(null);
     } finally {
       setLoading(false);
@@ -140,9 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           p_ip_address: clientIP,
         });
 
-        if (banError) {
-          console.warn('⚠️ Error checking IP ban:', banError);
-        } else if (banCheck?.banned) {
+        if (banError) {} else if (banCheck?.banned) {
           const errorMessage = banCheck.reason || 'IP address của bạn đã bị ban';
           throw new Error(errorMessage);
         }
@@ -151,11 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
-        });
-        console.log('🔵 Sign-in data:', data);
-        console.log('🔵 Sign-in error:', error);
-
-        if (error) throw error;
+        });if (error) throw error;
 
         // Nếu muốn phản hồi UI ngay khi đăng nhập thành công:
         if (data?.session?.user) {
@@ -167,8 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 p_ip_address: clientIP,
               });
             } catch (trackError) {
-              console.warn('⚠️ Error tracking IP:', trackError);
-              // Không throw error vì tracking IP không quan trọng bằng đăng nhập
+              // track IPing IP không quan trọng bằng đăng nhập
             }
           }
 
@@ -178,8 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.replace('/(tabs)/discover/match' as any);
         }
       } else {
-        // Nếu không lấy được IP, vẫn cho phép đăng nhập nhưng không track
-        console.warn('⚠️ Could not get client IP, proceeding without IP check');
+        // track IP
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -199,7 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-
   const signUpWithEmail = async (email: string, password: string, fullName?: string) => {
     // Lấy IP address trước khi đăng ký
     const clientIP = await getClientIPWithRetry();
@@ -210,9 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         p_ip_address: clientIP,
       });
 
-      if (banError) {
-        console.warn('⚠️ Error checking IP ban:', banError);
-      } else if (banCheck?.banned) {
+      if (banError) {} else if (banCheck?.banned) {
         const errorMessage = banCheck.reason || 'IP address của bạn đã bị ban. Không thể đăng ký tài khoản mới.';
         throw new Error(errorMessage);
       }
@@ -223,9 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         p_max_accounts: 3, // Giới hạn 3 tài khoản mỗi IP
       });
 
-      if (limitError) {
-        console.warn('⚠️ Error checking IP account limit:', limitError);
-      } else if (limitCheck?.banned || !limitCheck?.success) {
+      if (limitError) {} else if (limitCheck?.banned || !limitCheck?.success) {
         const errorMessage = limitCheck?.message || 'IP address đã đăng ký quá nhiều tài khoản. Không thể đăng ký thêm.';
         throw new Error(errorMessage);
       }
@@ -252,57 +230,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           p_ip_address: clientIP,
         });
 
-        // Kiểm tra lại sau khi track để tự động ban nếu vượt quá
+        // track IP để tự động ban nếu vượt quá
         await supabase.rpc('check_ip_account_limit', {
           p_ip_address: clientIP,
           p_max_accounts: 3,
         });
       } catch (trackError) {
-        console.warn('⚠️ Error tracking IP:', trackError);
-        // Không throw error vì tracking IP không quan trọng bằng đăng ký
+        // track IP không quan trọng bằng đăng ký
       }
     }
   };
 
   const signInWithGoogle = async () => {
-    console.log('🔵 Starting Google OAuth...');
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: 'petadoption://auth/callback',
-      },
-    });
-    console.log('🔵 OAuth Data:', data);
-    if (error) {
-      console.error('🔴 Google OAuth Error:', error);
+    setLoading(true);
+    try {
+      console.log('🔵 Starting Google OAuth...');
+      await GoogleAuthService.signInWithGoogle();
+      
+      // Don't wait for profile fetch - let it happen in background
+      // The auth state change will trigger profile fetch automatically
+      
+    } catch (error) {
+      setLoading(false);
       throw error;
     }
   };
 
   const signInWithFacebook = async () => {
-    console.log('🔵 Starting Facebook OAuth...');
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: {
-        redirectTo: 'petadoption://auth/callback',
-      },
-    });
-    console.log('🔵 OAuth Data:', data);
-    if (error) {
-      console.error('🔴 Facebook OAuth Error:', error);
+    try {
+      await OAuthHandlerService.signInWithFacebook();
+    } catch (error) {
       throw error;
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      // Clear local state first
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setHasCompletedOnboarding(false);
+      
+      // Clear AsyncStorage
+      try {
+        await AsyncStorage.removeItem('onboarding_completed');
+      } catch (storageError) {}
+      
+      // Try to logout from Supabase
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      
+      if (error) {
+        // Check if it's a network/server error (502, 503, etc.)
+        if (error.message?.includes('502') || 
+            error.message?.includes('Bad Gateway') ||
+            error.message?.includes('AuthRetryableFetchError')) {
+          // Don't throw error - user is effectively logged out locally
+        } else {
+          // For other errors, still don't throw to prevent UI issues
+        }
+      }
+      
+      // Navigate to login screen
+      router.replace('/auth/login' as any);
+      
+    } catch (error: any) {
+      // Even if logout fails, clear local state and navigate
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setHasCompletedOnboarding(false);
+      
+      try {
+        await AsyncStorage.removeItem('onboarding_completed');
+      } catch (storageError) {}
+      
+      router.replace('/auth/login' as any);
+      
+      // Don't throw error to prevent app crashes
+    }
   };
 
   const createProfile = async (role: 'user' | 'seller') => {
     if (!user) throw new Error('No user found');
-
-    console.log('🔵 Creating profile with role:', role);
 
     // Kiểm tra xem profile đã tồn tại chưa
     const { data: existingProfile } = await supabase
@@ -318,9 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .update({ role })
         .eq('id', user.id);
 
-      if (updateError) {
-        console.error('🔴 Error updating profile:', updateError);
-        throw updateError;
+      if (updateError) {throw updateError;
       }
     } else {
       // Nếu chưa có profile, tạo mới
@@ -333,23 +341,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error('🔴 Error creating profile:', error);
         throw error;
       }
     }
-
-    console.log('🔵 Profile created/updated successfully');
 
     // Nếu là seller, đảm bảo có subscription
     if (role === 'seller') {
       try {
         await supabase.rpc('ensure_seller_has_subscription', {
           user_profile_id: user.id
-        });
-        console.log('✅ Seller subscription ensured');
-      } catch (subscriptionError) {
-        console.warn('⚠️ Error ensuring seller subscription:', subscriptionError);
-        // Không throw error vì subscription có thể được tạo sau
+        });} catch (subscriptionError) {// Không throw error vì subscription có thể được tạo sau
       }
     }
 
@@ -360,7 +361,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Refresh profile để đảm bảo UI cập nhật
     await refreshProfile();
     
-    console.log('🔵 Returning role:', role);
     // Return role để component có thể xử lý redirect
     return role;
   };
@@ -369,9 +369,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem('onboarding_completed', 'true');
       setHasCompletedOnboarding(true);
-    } catch (error) {
-      console.error('Error saving onboarding status:', error);
-    }
+    } catch (error) {}
   };
 
   const value = {

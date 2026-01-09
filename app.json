@@ -8,13 +8,19 @@
     "scheme": "petadoption",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.petadoption.app",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["petadoption"]
+            "CFBundleURLSchemes": [
+              "petadoption",
+              "fb1731268644198831"
+            ]
           }
         ],
         "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để kết nối bạn với các người dùng và thú cưng xung quanh.",
@@ -34,9 +40,15 @@
           "data": [
             {
               "scheme": "petadoption"
+            },
+            {
+              "scheme": "fb1731268644198831"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -45,9 +57,27 @@
       "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
+    "developmentClient": {
+      "silentLaunch": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-auth-session",
+      [
+        "expo-facebook",
+        {
+          "appId": "1731268644198831",
+          "displayName": "AdoPet",
+          "scheme": "fb1731268644198831",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true
+        }
+      ],
       [
         "expo-web-browser",
         {

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.commission_tiers (
 
 -- Insert default tiers
 INSERT INTO public.commission_tiers (tier_name, min_reputation_points, max_reputation_points, commission_rate, processing_fee_rate) VALUES
-  ('Default', 0, 49, 6.00, 1.00),
+  ('Free', 0, 49, 6.00, 1.00),
   ('Bronze', 50, 99, 5.50, 1.00),
   ('Silver', 100, 199, 5.00, 1.00),
   ('Gold', 200, 499, 4.50, 1.00),

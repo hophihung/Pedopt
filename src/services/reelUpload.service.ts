@@ -3,7 +3,7 @@
  * Upload video/ảnh cho reels với content moderation
  */
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabaseClient';
 import { contentModerationService } from './contentModeration.service';
 import { Alert } from 'react-native';
@@ -161,7 +161,7 @@ class ReelUploadService {
 
       // Read file
       const fileData = await FileSystem.readAsStringAsync(videoUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       // Convert base64 to ArrayBuffer
@@ -222,7 +222,7 @@ class ReelUploadService {
 
       // Read file
       const fileData = await FileSystem.readAsStringAsync(thumbnailUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       // Convert base64 to ArrayBuffer

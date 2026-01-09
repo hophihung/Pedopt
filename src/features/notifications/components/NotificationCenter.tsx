@@ -9,7 +9,9 @@ import {
   ScrollView,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications, NotificationCategory } from '../hooks/useNotifications';
 import { NotificationItem } from './NotificationItem';
 import { Notification } from '../services/notification.service';
@@ -27,6 +29,7 @@ const CATEGORIES: { key: NotificationCategory; label: string }[] = [
 ];
 
 export function NotificationCenter() {
+  const insets = useSafeAreaInsets();
   const {
     notifications,
     groupedNotifications,
@@ -115,7 +118,7 @@ export function NotificationCenter() {
   return (
     <View style={styles.container}>
       {/* Header with filters and actions */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>Thông báo</Text>
           <View style={styles.headerActions}>
@@ -203,7 +206,10 @@ export function NotificationCenter() {
             renderNotificationGroup(groupKey, groupNotifications)
           }
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 100 } // Tăng padding để tránh bị tab layout che
+          ]}
         />
       )}
 
@@ -262,10 +268,14 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: colors.background,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   headerTop: {
     flexDirection: 'row',

@@ -27,6 +27,8 @@ import { PaymentMethodSelector } from '@/src/components/PaymentMethodSelector';
 import { PaymentMethodConfig } from '@/src/features/payment/services/paymentMethods.service';
 import { CurrencyConverter } from '@/src/utils/currency';
 import { MoreOptionsMenu } from '@/src/components/MoreOptionsMenu';
+import { PayOSPaymentModal } from '@/src/components/PayOSPaymentModal';
+import { PayOSService, PayOSPaymentRequest } from '@/src/features/payment/services/payos.service';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,6 +41,8 @@ export default function ProductDetailScreen() {
   const [ordering, setOrdering] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodConfig | null>(null);
+  const [showPayOSModal, setShowPayOSModal] = useState(false);
+  const [payosRequest, setPayosRequest] = useState<PayOSPaymentRequest | null>(null);
 
   const [shippingInfo, setShippingInfo] = useState({
     name: '',
@@ -77,6 +81,22 @@ export default function ProductDetailScreen() {
       };
     }
   }, [id]);
+
+  // Auto-fill shipping info from profile
+  useEffect(() => {
+    if (profile) {
+      const extendedProfile = profile as any; // Temporary type assertion
+      setShippingInfo({
+        name: extendedProfile.shipping_name || profile.full_name || '',
+        phone: extendedProfile.shipping_phone || extendedProfile.phone || '',
+        address: extendedProfile.shipping_address || '',
+        city: extendedProfile.shipping_city || '',
+        district: extendedProfile.shipping_district || '',
+        ward: extendedProfile.shipping_ward || '',
+        note: '',
+      });
+    }
+  }, [profile]);
 
   const loadProduct = async () => {
     try {
@@ -135,6 +155,31 @@ export default function ProductDetailScreen() {
         return;
       }
 
+      // Nếu chọn PayOS, hiển thị PayOS modal
+      if (selectedPaymentMethod.id === 'payos') {
+        const payosRequest: PayOSPaymentRequest = {
+          orderCode: PayOSService.generateOrderCode(),
+          amount: PayOSService.formatAmount(finalPrice),
+          description: `Thanh toán đơn hàng ${product.name}`,
+          buyerName: shippingInfo.name,
+          buyerPhone: shippingInfo.phone,
+          buyerAddress: shippingInfo.address,
+          items: [
+            {
+              name: product.name,
+              quantity: quantity,
+              price: PayOSService.formatAmount(product.price),
+            },
+          ],
+        };
+
+        setPayosRequest(payosRequest);
+        setShowPayOSModal(true);
+        setOrdering(false);
+        return;
+      }
+
+      // Xử lý các payment method khác (COD, bank transfer)
       const orderInput: CreateOrderInput = {
         product_id: product.id,
         quantity,
@@ -145,7 +190,7 @@ export default function ProductDetailScreen() {
         shipping_district: shippingInfo.district || undefined,
         shipping_ward: shippingInfo.ward || undefined,
         shipping_note: shippingInfo.note || undefined,
-        payment_method: selectedPaymentMethod.id,
+        payment_method: selectedPaymentMethod.id as any,
       };
 
       await OrderService.create(orderInput, user.id);
@@ -173,6 +218,57 @@ export default function ProductDetailScreen() {
 
   const formatPrice = (price: number) => {
     return CurrencyConverter.format(price, 'VND');
+  };
+
+  const handlePayOSSuccess = async (transactionData: any) => {
+    try {
+      setOrdering(true);
+      
+      // Tạo order với payment đã được xác nhận
+      const orderInput: CreateOrderInput = {
+        product_id: product!.id,
+        quantity,
+        shipping_name: shippingInfo.name,
+        shipping_phone: shippingInfo.phone,
+        shipping_address: shippingInfo.address,
+        shipping_city: shippingInfo.city || undefined,
+        shipping_district: shippingInfo.district || undefined,
+        shipping_ward: shippingInfo.ward || undefined,
+        shipping_note: shippingInfo.note || undefined,
+        payment_method: 'payos' as any,
+        payment_transaction_id: transactionData.paymentLinkId,
+      };
+
+      await OrderService.create(orderInput, user!.id);
+      
+      setShowPayOSModal(false);
+      setShowCheckout(false);
+      
+      Alert.alert(
+        'Thanh toán thành công! 🎉',
+        'Đơn hàng của bạn đã được thanh toán và tạo thành công.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error creating order after payment:', error);
+      Alert.alert('Lỗi', 'Thanh toán thành công nhưng không thể tạo đơn hàng. Vui lòng liên hệ hỗ trợ.');
+    } finally {
+      setOrdering(false);
+    }
+  };
+
+  const handlePayOSError = (error: string) => {
+    setShowPayOSModal(false);
+    Alert.alert('Lỗi thanh toán', error);
+  };
+
+  const handlePayOSClose = () => {
+    setShowPayOSModal(false);
   };
 
   const hasDiscount = product?.original_price && product.original_price > product.price;
@@ -391,6 +487,26 @@ export default function ProductDetailScreen() {
             {/* Shipping Info */}
             <View style={styles.checkoutSection}>
               <Text style={styles.checkoutSectionTitle}>Thông tin giao hàng</Text>
+              {(profile as any)?.shipping_name && (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#F0F8FF',
+                  padding: 12,
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  gap: 8,
+                }}>
+                  <Check size={16} color={colors.primary} />
+                  <Text style={{
+                    fontSize: 14,
+                    color: colors.primary,
+                    flex: 1,
+                  }}>
+                    Thông tin đã được tự động điền từ hồ sơ của bạn
+                  </Text>
+                </View>
+              )}
               <TextInput
                 style={styles.checkoutInput}
                 placeholder="Họ và tên *"
@@ -494,6 +610,17 @@ export default function ProductDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* PayOS Payment Modal */}
+      {payosRequest && (
+        <PayOSPaymentModal
+          visible={showPayOSModal}
+          onClose={handlePayOSClose}
+          onSuccess={handlePayOSSuccess}
+          onError={handlePayOSError}
+          paymentRequest={payosRequest}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -828,4 +955,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

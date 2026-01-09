@@ -142,7 +142,7 @@ const CommunityScreen: React.FC = () => {
           like_count,
           comment_count,
           created_at,
-          profiles ( id, full_name, avatar_url )
+          profiles!posts_user_id_fkey ( id, full_name, avatar_url )
         `
         )
         .order('created_at', { ascending: false });
@@ -461,29 +461,28 @@ const CommunityScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header with Tabs */}
+      {/* Compact Header - Logo + Tabs in one row */}
       <View style={styles.headerContainer}>
-        <Header showBack={true} title="Cộng đồng" />
-        <View style={styles.tabsContainer}>
+        <Text style={styles.logoIcon}>🐾</Text>
+        
+        <View style={styles.tabsRow}>
           <TouchableOpacity
-            style={styles.tab}
+            style={[styles.tabButton, activeTab === 'community' && styles.tabButtonActive]}
             onPress={() => handleTabChange('community')}
             activeOpacity={0.7}
           >
-            <Text style={[styles.tabText, activeTab === 'community' && styles.tabTextActive]}>
+            <Text style={[styles.tabButtonText, activeTab === 'community' && styles.tabButtonTextActive]}>
               Cộng đồng
             </Text>
-            {activeTab === 'community' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.tab}
+            style={[styles.tabButton, activeTab === 'chat' && styles.tabButtonActive]}
             onPress={() => handleTabChange('chat')}
             activeOpacity={0.7}
           >
-            <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>
+            <Text style={[styles.tabButtonText, activeTab === 'chat' && styles.tabButtonTextActive]}>
               Tin nhắn
             </Text>
-            {activeTab === 'chat' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -492,7 +491,7 @@ const CommunityScreen: React.FC = () => {
         onPress={() => router.push('/post/create-post')}
         activeOpacity={0.8}
       >
-        <Plus color="#FFFFFF" size={20} strokeWidth={2.5} />
+        <Plus color="#FFFFFF" size={28} strokeWidth={3} />
       </TouchableOpacity>
 
       {loading ? (
@@ -517,7 +516,7 @@ const CommunityScreen: React.FC = () => {
           updateCellsBatchingPeriod={50}
           initialNumToRender={5}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: bottomPadding }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: bottomPadding }}
         />
       )}
 
@@ -616,52 +615,60 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   headerContainer: {
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 24,
-  },
-  tab: {
     alignItems: 'center',
-    paddingVertical: 12,
-    position: 'relative',
-    minWidth: 80,
+    backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'ios' ? 56 : 46,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  tabText: {
-    fontSize: 16,
+  logoIcon: {
+    fontSize: 28,
+  },
+  tabsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 14,
+    padding: 3,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 11,
+    alignItems: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: '#9CA3AF',
   },
-  tabTextActive: {
-    color: colors.primary,
+  tabButtonTextActive: {
+    color: '#FF6B6B',
     fontWeight: '700',
-    fontSize: 17,
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    transform: [{ translateX: -20 }],
-    width: 40,
-    height: 3,
-    backgroundColor: colors.primary,
-    borderRadius: 2,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
+    borderRadius: 24,
+    marginHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
     overflow: 'hidden',
   },
   userRow: {
@@ -671,11 +678,11 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     marginRight: 12,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#FF6B6B',
   },
   userInfo: {
@@ -714,10 +721,15 @@ const styles = StyleSheet.create({
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
     backgroundColor: '#F8F9FA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   count: {
     marginLeft: 8,
@@ -726,18 +738,22 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   fab: {
-    backgroundColor: '#000000',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 120 : 100,
+    right: 24,
+    backgroundColor: '#FF6B6B',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+    zIndex: 999,
   },
   modalContainer: {
     flex: 1,
@@ -774,14 +790,14 @@ const styles = StyleSheet.create({
   commentCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 20,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   commentUser: {
     fontWeight: '700',
@@ -826,16 +842,16 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     backgroundColor: '#FF6B6B',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   sendButtonDisabled: {
     backgroundColor: '#CCC',

@@ -62,6 +62,41 @@ const VACCINATION_STATUS_LABELS: Record<string, string> = {
   unknown: 'Không rõ',
 };
 
+const TEMPERAMENT_LABELS: Record<string, string> = {
+  friendly: 'Thân thiện',
+  aggressive: 'Hung dữ',
+  calm: 'Bình tĩnh',
+  playful: 'Vui tươi',
+  shy: 'Nhút nhát',
+  energetic: 'Năng động',
+  lazy: 'Lười biếng',
+  protective: 'Bảo vệ',
+  independent: 'Độc lập',
+  social: 'Hòa đồng',
+};
+
+const TRAINING_LEVEL_LABELS: Record<string, string> = {
+  none: 'Chưa huấn luyện',
+  basic: 'Cơ bản',
+  intermediate: 'Trung bình',
+  advanced: 'Nâng cao',
+  professional: 'Chuyên nghiệp',
+};
+
+const EXERCISE_NEEDS_LABELS: Record<string, string> = {
+  low: 'Ít',
+  moderate: 'Vừa phải',
+  high: 'Nhiều',
+  very_high: 'Rất nhiều',
+};
+
+const GROOMING_NEEDS_LABELS: Record<string, string> = {
+  low: 'Ít',
+  moderate: 'Vừa phải',
+  high: 'Nhiều',
+  professional: 'Cần chuyên nghiệp',
+};
+
 export default function PetDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -369,6 +404,88 @@ export default function PetDetailScreen() {
                 </Text>
               </View>
             )}
+
+            {pet.temperament && (
+              <View style={styles.detailItem}>
+                <Heart size={18} color="#666" />
+                <Text style={styles.detailLabel}>Tính cách</Text>
+                <Text style={styles.detailValue}>
+                  {TEMPERAMENT_LABELS[pet.temperament] || pet.temperament}
+                </Text>
+              </View>
+            )}
+
+            {pet.origin && (
+              <View style={styles.detailItem}>
+                <MapPin size={18} color="#666" />
+                <Text style={styles.detailLabel}>Xuất xứ</Text>
+                <Text style={styles.detailValue}>{pet.origin}</Text>
+              </View>
+            )}
+
+            {pet.training_level && (
+              <View style={styles.detailItem}>
+                <Activity size={18} color="#666" />
+                <Text style={styles.detailLabel}>Mức độ huấn luyện</Text>
+                <Text style={styles.detailValue}>
+                  {TRAINING_LEVEL_LABELS[pet.training_level] || pet.training_level}
+                </Text>
+              </View>
+            )}
+
+            {pet.socialization_level && (
+              <View style={styles.detailItem}>
+                <Users size={18} color="#666" />
+                <Text style={styles.detailLabel}>Mức độ xã hội hóa</Text>
+                <Text style={styles.detailValue}>{pet.socialization_level}</Text>
+              </View>
+            )}
+
+            {pet.exercise_needs && (
+              <View style={styles.detailItem}>
+                <Zap size={18} color="#666" />
+                <Text style={styles.detailLabel}>Nhu cầu vận động</Text>
+                <Text style={styles.detailValue}>
+                  {EXERCISE_NEEDS_LABELS[pet.exercise_needs] || pet.exercise_needs}
+                </Text>
+              </View>
+            )}
+
+            {pet.grooming_needs && (
+              <View style={styles.detailItem}>
+                <Palette size={18} color="#666" />
+                <Text style={styles.detailLabel}>Nhu cầu chăm sóc</Text>
+                <Text style={styles.detailValue}>
+                  {GROOMING_NEEDS_LABELS[pet.grooming_needs] || pet.grooming_needs}
+                </Text>
+              </View>
+            )}
+
+            {pet.diet_requirements && (
+              <View style={styles.detailItem}>
+                <Activity size={18} color="#666" />
+                <Text style={styles.detailLabel}>Yêu cầu chế độ ăn</Text>
+                <Text style={styles.detailValue}>{pet.diet_requirements}</Text>
+              </View>
+            )}
+
+            {pet.living_environment && (
+              <View style={styles.detailItem}>
+                <Activity size={18} color="#666" />
+                <Text style={styles.detailLabel}>Môi trường sống</Text>
+                <Text style={styles.detailValue}>{pet.living_environment}</Text>
+              </View>
+            )}
+
+            {pet.adoption_fee && pet.adoption_fee > 0 && (
+              <View style={styles.detailItem}>
+                <DollarSign size={18} color="#666" />
+                <Text style={styles.detailLabel}>Phí nhận nuôi</Text>
+                <Text style={styles.detailValue}>
+                  {pet.adoption_fee.toLocaleString('vi-VN')} VND
+                </Text>
+              </View>
+            )}
             
             {pet.location && (
               <View style={styles.detailItem}>
@@ -407,7 +524,7 @@ export default function PetDetailScreen() {
           )}
 
           {/* Characteristics */}
-          {(pet.spayed_neutered !== null || pet.microchipped !== null || pet.house_trained !== null || pet.good_with_kids !== null || pet.good_with_pets !== null) && (
+          {(pet.spayed_neutered !== null || pet.microchipped !== null || pet.house_trained !== null || pet.good_with_kids !== null || pet.good_with_pets !== null || pet.good_with_dogs !== null || pet.good_with_cats !== null || pet.indoor_outdoor !== null || pet.apartment_friendly !== null) && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Đặc điểm</Text>
               <View style={styles.characteristicsContainer}>
@@ -438,7 +555,88 @@ export default function PetDetailScreen() {
                     <Text style={styles.characteristicText}>Thân thiện thú cưng khác</Text>
                   </View>
                 )}
+                {pet.good_with_dogs && (
+                  <View style={styles.characteristicBadge}>
+                    <Heart size={14} color="#4CD964" />
+                    <Text style={styles.characteristicText}>Thân thiện với chó</Text>
+                  </View>
+                )}
+                {pet.good_with_cats && (
+                  <View style={styles.characteristicBadge}>
+                    <Heart size={14} color="#4CD964" />
+                    <Text style={styles.characteristicText}>Thân thiện với mèo</Text>
+                  </View>
+                )}
+                {pet.indoor_outdoor && (
+                  <View style={styles.characteristicBadge}>
+                    <Activity size={14} color="#4CD964" />
+                    <Text style={styles.characteristicText}>{pet.indoor_outdoor === 'indoor' ? 'Nuôi trong nhà' : pet.indoor_outdoor === 'outdoor' ? 'Nuôi ngoài trời' : 'Cả trong và ngoài nhà'}</Text>
+                  </View>
+                )}
+                {pet.apartment_friendly && (
+                  <View style={styles.characteristicBadge}>
+                    <Activity size={14} color="#4CD964" />
+                    <Text style={styles.characteristicText}>Phù hợp chung cư</Text>
+                  </View>
+                )}
               </View>
+            </View>
+          )}
+
+          {/* Additional Information */}
+          {(pet.medical_history || pet.behavioral_notes || pet.previous_owner_info || pet.rescue_story || pet.personality_traits) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Thông tin bổ sung</Text>
+              
+              {pet.medical_history && (
+                <View style={styles.additionalInfoItem}>
+                  <Shield size={18} color="#666" />
+                  <View style={styles.additionalInfoContent}>
+                    <Text style={styles.additionalInfoLabel}>Lịch sử y tế</Text>
+                    <Text style={styles.additionalInfoText}>{pet.medical_history}</Text>
+                  </View>
+                </View>
+              )}
+
+              {pet.behavioral_notes && (
+                <View style={styles.additionalInfoItem}>
+                  <Activity size={18} color="#666" />
+                  <View style={styles.additionalInfoContent}>
+                    <Text style={styles.additionalInfoLabel}>Ghi chú hành vi</Text>
+                    <Text style={styles.additionalInfoText}>{pet.behavioral_notes}</Text>
+                  </View>
+                </View>
+              )}
+
+              {pet.previous_owner_info && (
+                <View style={styles.additionalInfoItem}>
+                  <Users size={18} color="#666" />
+                  <View style={styles.additionalInfoContent}>
+                    <Text style={styles.additionalInfoLabel}>Thông tin chủ cũ</Text>
+                    <Text style={styles.additionalInfoText}>{pet.previous_owner_info}</Text>
+                  </View>
+                </View>
+              )}
+
+              {pet.rescue_story && (
+                <View style={styles.additionalInfoItem}>
+                  <Heart size={18} color="#666" />
+                  <View style={styles.additionalInfoContent}>
+                    <Text style={styles.additionalInfoLabel}>Câu chuyện cứu hộ</Text>
+                    <Text style={styles.additionalInfoText}>{pet.rescue_story}</Text>
+                  </View>
+                </View>
+              )}
+
+              {pet.personality_traits && (
+                <View style={styles.additionalInfoItem}>
+                  <Activity size={18} color="#666" />
+                  <View style={styles.additionalInfoContent}>
+                    <Text style={styles.additionalInfoLabel}>Đặc điểm tính cách</Text>
+                    <Text style={styles.additionalInfoText}>{pet.personality_traits}</Text>
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -863,6 +1061,29 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FF5A75',
     fontSize: 14,
+    lineHeight: 20,
+  },
+  additionalInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+  },
+  additionalInfoContent: {
+    flex: 1,
+  },
+  additionalInfoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  additionalInfoText: {
+    fontSize: 14,
+    color: '#666',
     lineHeight: 20,
   },
 });

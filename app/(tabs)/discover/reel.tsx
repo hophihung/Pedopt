@@ -20,6 +20,7 @@ import {
 import { Heart, MessageCircle, Share2, Plus, Send, X, Music, Video, Image as ImageIcon, User, ArrowLeft } from 'lucide-react-native';
 import { Video as ExpoVideo, AVPlaybackStatus } from 'expo-av';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReelService, Reel, ReelComment } from '@/src/features/reels/services/reel.service';
 import { colors } from '@/src/theme/colors';
@@ -32,6 +33,15 @@ import { AvatarImage } from '@/src/components/AvatarImage';
 import { ReportButton } from '@/src/components/ReportButton';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Ensure full screen height for reels
+const REEL_HEIGHT = SCREEN_HEIGHT;
+
+// Fixed viewability config to avoid runtime changes
+const VIEWABILITY_CONFIG = {
+  itemVisiblePercentThreshold: 90,
+  minimumViewTime: 100,
+};
 
 export default function ReelScreen() {
   const router = useRouter();
@@ -70,6 +80,14 @@ export default function ReelScreen() {
   const actionButtonsOpacity = useRef(new Animated.Value(0)).current;
   const actionButtonsTranslateY = useRef(new Animated.Value(50)).current;
   
+  // Animation for music waves
+  const musicWaveAnimations = useRef([
+    new Animated.Value(0.3),
+    new Animated.Value(0.6),
+    new Animated.Value(0.4),
+    new Animated.Value(0.8),
+  ]).current;
+  
 
 
   // Start music disc rotation animation
@@ -83,15 +101,39 @@ export default function ReelScreen() {
       })
     );
     
+    // Music wave animations
+    const waveAnimations = musicWaveAnimations.map((wave, index) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(wave, {
+            toValue: 1,
+            duration: 600 + index * 100,
+            useNativeDriver: false,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          Animated.timing(wave, {
+            toValue: 0.3,
+            duration: 600 + index * 100,
+            useNativeDriver: false,
+            easing: Easing.inOut(Easing.ease),
+          }),
+        ])
+      )
+    );
+    
     if (currentPlayingReelId) {
       rotateAnimation.start();
+      waveAnimations.forEach(anim => anim.start());
     } else {
       rotateAnimation.stop();
       musicDiscRotation.setValue(0);
+      waveAnimations.forEach(anim => anim.stop());
+      musicWaveAnimations.forEach(wave => wave.setValue(0.3));
     }
     
     return () => {
       rotateAnimation.stop();
+      waveAnimations.forEach(anim => anim.stop());
     };
   }, [currentPlayingReelId]);
 
@@ -137,11 +179,6 @@ export default function ReelScreen() {
       }),
     ]).start();
   }, []);
-
-  useEffect(() => {
-    loadReels('initial');
-    loadLikedReels();
-  }, [loadReels]);
 
   // Load products for reels
   useEffect(() => {
@@ -327,6 +364,12 @@ export default function ReelScreen() {
     },
     []
   );
+
+  // Initialize reels and liked reels
+  useEffect(() => {
+    loadReels('initial');
+    loadLikedReels();
+  }, [loadReels]);
 
   const handleRefresh = () => {
     loadReels('refresh');
@@ -636,6 +679,37 @@ export default function ReelScreen() {
     };
   }, []);
 
+  // Handle focus/blur events - pause when leaving tab, resume when returning
+  useFocusEffect(
+    useCallback(() => {
+      // Tab is focused - resume current video if any
+      if (currentVideoId) {
+        const video = videoRefs.current.get(currentVideoId);
+        if (video) {
+          video.playAsync().catch(console.error);
+        }
+      }
+      
+      // Resume music if any
+      if (currentPlayingReelId && reels.length > 0) {
+        const currentReel = reels.find(r => r.id === currentPlayingReelId);
+        if (currentReel) {
+          handlePlayMusicInternal(currentReel);
+        }
+      }
+
+      return () => {
+        // Tab is blurred - pause all videos and stop music
+        videoRefs.current.forEach((video) => {
+          video.pauseAsync().catch(console.error);
+        });
+        
+        // Stop music
+        handleStopMusicInternal();
+      };
+    }, [currentVideoId, currentPlayingReelId, reels])
+  );
+
   const renderReel = useCallback(({ item, index }: { item: Reel; index: number }) => {
     const isLiked = likedReels.has(item.id);
     const profile = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
@@ -649,8 +723,8 @@ export default function ReelScreen() {
     const isWide = videoOrientation === 'wide';
     const isSquare = videoOrientation === 'square';
     
-    // Only render video if it's the current or adjacent item (performance optimization)
-    const shouldRenderVideo = Math.abs(index - currentIndex) <= 1;
+    // Preload more videos for smoother experience
+    const shouldRenderVideo = Math.abs(index - currentIndex) <= 2;
 
     return (
       <TouchableOpacity 
@@ -821,7 +895,7 @@ export default function ReelScreen() {
               />
             ))}
             
-            {/* User Avatar and Name */}
+            {/* User Avatar and Name - Enhanced Design */}
             <TouchableOpacity 
               style={styles.userInfo}
               onPress={() => {
@@ -834,25 +908,38 @@ export default function ReelScreen() {
               }}
               activeOpacity={0.8}
             >
-              <AvatarImage
-                uri={profile?.avatar_url}
-                size={32}
-                style={styles.userAvatar}
-                placeholderColor="rgba(255, 255, 255, 0.2)"
-              />
-              <Text style={styles.username}>
-                @{profile?.full_name?.toLowerCase().replace(/\s+/g, '_') || 'user'}
-              </Text>
+              <View style={styles.userAvatarContainer}>
+                <AvatarImage
+                  uri={profile?.avatar_url}
+                  size={40}
+                  style={styles.userAvatar}
+                  placeholderColor="rgba(255, 255, 255, 0.2)"
+                />
+                <LinearGradient
+                  colors={['#FF8C42', '#FFB366', '#FF6B6B']}
+                  style={styles.avatarBorder}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              </View>
+              <View style={styles.userTextContainer}>
+                <Text style={styles.username}>
+                  @{profile?.full_name?.toLowerCase().replace(/\s+/g, '_') || 'user'}
+                </Text>
+                <Text style={styles.userFullName}>
+                  {profile?.full_name || 'Người dùng'}
+                </Text>
+              </View>
             </TouchableOpacity>
             
-            {/* Caption - positioned to be visible above tab bar */}
+            {/* Caption - Enhanced with better styling */}
             {item.caption && (() => {
               const isExpanded = expandedCaptions.has(item.id);
               const captionLength = item.caption.length;
-              const shouldShowReadMore = captionLength > 100; // Show "Xem thêm" if caption is longer than 100 characters
+              const shouldShowReadMore = captionLength > 100;
               
               return (
-                <View>
+                <View style={styles.captionContainer}>
                   <Text 
                     style={styles.caption} 
                     numberOfLines={isExpanded ? undefined : 2}
@@ -873,6 +960,7 @@ export default function ReelScreen() {
                         });
                       }}
                       activeOpacity={0.7}
+                      style={styles.readMoreButton}
                     >
                       <Text style={styles.readMoreText}>
                         {isExpanded ? 'Thu gọn' : 'Xem thêm'}
@@ -883,19 +971,39 @@ export default function ReelScreen() {
               );
             })()}
             
-            {/* Music Info - TikTok style with rotating disc */}
+            {/* Music Info - Enhanced TikTok style with rotating disc */}
             {item.music_tracks && (
               <TouchableOpacity 
                 style={styles.musicContainer}
                 activeOpacity={0.8}
               >
                 <View style={styles.musicIconContainer}>
-                  <Music size={14} color="#fff" />
+                  <Music size={16} color="#fff" />
                 </View>
                 <View style={styles.musicTextContainer}>
                   <Text style={styles.musicText} numberOfLines={1}>
-                    {item.music_tracks.title} · {item.music_tracks.artist}
+                    ♪ {item.music_tracks.title} · {item.music_tracks.artist}
                   </Text>
+                </View>
+                <View style={styles.musicWaveContainer}>
+                  {musicWaveAnimations.map((wave, index) => (
+                    <Animated.View
+                      key={index}
+                      style={[
+                        styles.musicWave,
+                        {
+                          height: wave.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [4, [8, 12, 6, 10][index]],
+                          }),
+                          opacity: wave.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.4, 1],
+                          }),
+                        },
+                      ]}
+                    />
+                  ))}
                 </View>
               </TouchableOpacity>
             )}
@@ -903,7 +1011,7 @@ export default function ReelScreen() {
 
           {/* Right side - Actions */}
           <View style={styles.actionsContainer}>
-            {/* Avatar Button - Click to view profile */}
+            {/* Avatar Button - Enhanced with better styling */}
             {profile?.avatar_url && profile.avatar_url.trim() !== '' ? (
               <TouchableOpacity 
                 style={styles.avatarButton}
@@ -918,12 +1026,20 @@ export default function ReelScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <Image
-                  source={{ uri: profile.avatar_url }}
-                  style={styles.actionAvatar}
-                />
+                <View style={styles.actionAvatarContainer}>
+                  <Image
+                    source={{ uri: profile.avatar_url }}
+                    style={styles.actionAvatar}
+                  />
+                  <LinearGradient
+                    colors={['#FF8C42', '#FFB366', '#FF6B6B']}
+                    style={styles.actionAvatarBorder}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                </View>
                 <View style={styles.followButton}>
-                  <Plus size={14} color="#fff" />
+                  <Plus size={12} color="#fff" />
                 </View>
               </TouchableOpacity>
             ) : (
@@ -939,11 +1055,19 @@ export default function ReelScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <View style={styles.actionAvatarPlaceholder}>
-                  <User size={24} color="#fff" />
+                <View style={styles.actionAvatarContainer}>
+                  <View style={styles.actionAvatarPlaceholder}>
+                    <User size={24} color="#fff" />
+                  </View>
+                  <LinearGradient
+                    colors={['#FF8C42', '#FFB366', '#FF6B6B']}
+                    style={styles.actionAvatarBorder}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
                 </View>
                 <View style={styles.followButton}>
-                  <Plus size={14} color="#fff" />
+                  <Plus size={12} color="#fff" />
                 </View>
               </TouchableOpacity>
             )}
@@ -953,14 +1077,20 @@ export default function ReelScreen() {
               onPress={() => handleLike(item.id)}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconContainer, isLiked && styles.actionIconContainerLiked]}>
+              <Animated.View 
+                style={[
+                  styles.actionIconContainer, 
+                  isLiked && styles.actionIconContainerLiked,
+                  { transform: [{ scale: likeScale }] }
+                ]}
+              >
                 <Heart
                   size={28}
                   color={isLiked ? '#FF8C42' : '#fff'}
                   fill={isLiked ? '#FF8C42' : 'transparent'}
                   strokeWidth={2.5}
                 />
-              </View>
+              </Animated.View>
               <Text style={styles.actionText}>{item.like_count}</Text>
             </TouchableOpacity>
 
@@ -1057,20 +1187,34 @@ export default function ReelScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.replace('/(tabs)/discover/match')}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerRight}>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerContent}>
+            <View style={styles.mainTabs}>
+              <TouchableOpacity
+                style={styles.mainTabButton}
+                onPress={() => router.replace('/(tabs)/discover/match')}
+                activeOpacity={0.7}
+              >
+                <Heart size={24} color="#6B7280" strokeWidth={2.5} />
+                <Text style={styles.mainTabText}>Match</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.mainTabButton, styles.mainTabButtonActive]}
+                onPress={() => router.push('/(tabs)/discover/reel')}
+                activeOpacity={0.7}
+              >
+                <Video size={24} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.mainTabTextActive}>Reels</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
-              style={styles.addButton}
+              style={styles.addIconButton}
               onPress={() => router.push('/reel/create-reel')}
+              activeOpacity={0.7}
             >
-              <Plus size={24} color="#fff" />
+              <Plus size={26} color="#6B7280" strokeWidth={2} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1080,16 +1224,13 @@ export default function ReelScreen() {
           keyExtractor={(_, index) => `skeleton-${index}`}
           pagingEnabled
           showsVerticalScrollIndicator={false}
-          snapToInterval={SCREEN_HEIGHT}
+          snapToInterval={REEL_HEIGHT}
           decelerationRate="fast"
           onViewableItemsChanged={() => {}} // Empty handler to prevent nullability error
-          viewabilityConfig={{
-            itemVisiblePercentThreshold: 50,
-            minimumViewTime: 100,
-          }}
+          viewabilityConfig={VIEWABILITY_CONFIG}
           getItemLayout={(data, index) => ({
-            length: SCREEN_HEIGHT,
-            offset: SCREEN_HEIGHT * index,
+            length: REEL_HEIGHT,
+            offset: REEL_HEIGHT * index,
             index,
           })}
         />
@@ -1100,20 +1241,34 @@ export default function ReelScreen() {
   if (reels.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.replace('/(tabs)/discover/match')}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerRight}>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerContent}>
+            <View style={styles.mainTabs}>
+              <TouchableOpacity
+                style={styles.mainTabButton}
+                onPress={() => router.replace('/(tabs)/discover/match')}
+                activeOpacity={0.7}
+              >
+                <Heart size={24} color="#6B7280" strokeWidth={2.5} />
+                <Text style={styles.mainTabText}>Match</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.mainTabButton, styles.mainTabButtonActive]}
+                onPress={() => router.push('/(tabs)/discover/reel')}
+                activeOpacity={0.7}
+              >
+                <Video size={24} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.mainTabTextActive}>Reels</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
-              style={styles.addButton}
+              style={styles.addIconButton}
               onPress={() => router.push('/reel/create-reel')}
+              activeOpacity={0.7}
             >
-              <Plus size={24} color="#fff" />
+              <Plus size={26} color="#6B7280" strokeWidth={2} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1142,21 +1297,37 @@ export default function ReelScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Transparent header with back and add buttons */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.push('/')}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerRight}>
+      {/* Header cùng tone với match.tsx */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerContent}>
+          {/* Main Tabs */}
+          <View style={styles.mainTabs}>
+            <TouchableOpacity
+              style={styles.mainTabButton}
+              onPress={() => router.replace('/(tabs)/discover/match')}
+              activeOpacity={0.7}
+            >
+              <Heart size={24} color="#6B7280" strokeWidth={2.5} />
+              <Text style={styles.mainTabText}>Match</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.mainTabButton, styles.mainTabButtonActive]}
+              onPress={() => router.push('/(tabs)/discover/reel')}
+              activeOpacity={0.7}
+            >
+              <Video size={24} color="#FFFFFF" strokeWidth={2.5} />
+              <Text style={styles.mainTabTextActive}>Reels</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Add Button */}
           <TouchableOpacity
-            style={styles.addButton}
+            style={styles.addIconButton}
             onPress={() => router.push('/reel/create-reel')}
+            activeOpacity={0.7}
           >
-            <Plus size={24} color="#fff" />
+            <Plus size={26} color="#6B7280" strokeWidth={2} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1166,8 +1337,10 @@ export default function ReelScreen() {
         data={reels}
         renderItem={renderReel}
         keyExtractor={(item) => item.id}
-        pagingEnabled
+        pagingEnabled={true}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+        style={{ flex: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1175,26 +1348,23 @@ export default function ReelScreen() {
             tintColor={colors.primary}
           />
         }
-        snapToInterval={SCREEN_HEIGHT}
+        snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={handleViewChange}
-        viewabilityConfig={{
-          itemVisiblePercentThreshold: 50,
-          minimumViewTime: 100,
-        }}
+        viewabilityConfig={VIEWABILITY_CONFIG}
         onScrollToIndexFailed={(info) => {
           // Handle scroll to index failure
           console.warn('Scroll to index failed:', info);
         }}
         getItemLayout={(data, index) => ({
-          length: SCREEN_HEIGHT,
-          offset: SCREEN_HEIGHT * index,
+          length: REEL_HEIGHT,
+          offset: REEL_HEIGHT * index,
           index,
         })}
-        removeClippedSubviews={Platform.OS === 'android'}
-        windowSize={2}
+        removeClippedSubviews={false}
+        windowSize={3}
         maxToRenderPerBatch={1}
-        updateCellsBatchingPeriod={50}
+        updateCellsBatchingPeriod={100}
         initialNumToRender={1}
         maintainVisibleContentPosition={null}
         onEndReachedThreshold={0.5}
@@ -1204,6 +1374,7 @@ export default function ReelScreen() {
         // Performance optimizations
         disableIntervalMomentum={true}
         scrollEventThrottle={16}
+        bounces={false}
       />
 
       {/* Comment Modal */}
@@ -1294,6 +1465,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
   loadingContainer: {
     flex: 1,
@@ -1302,142 +1474,138 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 44 : 36,
+    paddingBottom: 9,
     paddingHorizontal: 20,
-    backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  headerContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'ios' ? 44 : 36,
+    paddingBottom: 9,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mainTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
+    padding: 10,
+    gap: 8,
+  },
+  mainTabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 10,
+  },
+  mainTabButtonActive: {
+    backgroundColor: '#FF6B6B',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  mainTabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  mainTabTextActive: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  addIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tab: {
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    position: 'relative',
-  },
-  tabDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.75)',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-    letterSpacing: 0.3,
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 17,
-    textShadowColor: 'rgba(0, 0, 0, 0.7)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    left: '50%',
-    transform: [{ translateX: -15 }],
-    width: 30,
-    height: 3,
-    backgroundColor: '#fff',
-    borderRadius: 2,
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 5,
   },
   reelContainer: {
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     width: SCREEN_WIDTH,
     position: 'relative',
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
   reelImage: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     backgroundColor: '#000',
   },
   portraitVideoContainer: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     backgroundColor: '#000',
   },
   portraitVideo: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     backgroundColor: '#000',
   },
   landscapeVideoContainer: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   landscapeVideo: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.8, // Keep some space, don't force full screen
+    height: REEL_HEIGHT * 0.8, // Keep some space, don't force full screen
     backgroundColor: '#000',
   },
   containVideoContainer: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   containVideo: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: REEL_HEIGHT,
     backgroundColor: '#000',
   },
   overlay: {
@@ -1450,40 +1618,52 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 20, // Safe area padding
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 100 : 80, // Space for header tabs
+    paddingTop: Platform.OS === 'ios' ? 140 : 120, // Space for new header
   },
   infoContainer: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingBottom: Platform.OS === 'ios' ? 130 : 110, // Đẩy lên cao để không bị che bởi bottom tab bar
+    paddingBottom: Platform.OS === 'ios' ? 155 : 155, // Nhích lên 5px
     maxWidth: SCREEN_WIDTH - 100, // Leave space for action buttons
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: 16,
+    gap: 12,
+    paddingHorizontal: 4,
+  },
+  userAvatarContainer: {
+    position: 'relative',
+    width: 44,
+    height: 44,
   },
   userAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#fff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  userAvatarPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  avatarBorder: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    zIndex: -1,
+  },
+  userTextContainer: {
+    flex: 1,
+    gap: 2,
   },
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
@@ -1491,23 +1671,38 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
     letterSpacing: 0.3,
   },
+  userFullName: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  captionContainer: {
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
   caption: {
     fontSize: 15,
     color: '#fff',
     lineHeight: 22,
-    marginBottom: 6,
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     paddingRight: 8,
     fontWeight: '500',
   },
+  readMoreButton: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
   readMoreText: {
     fontSize: 14,
     color: '#fff',
     fontWeight: '700',
-    marginTop: 4,
-    marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -1516,31 +1711,36 @@ const styles = StyleSheet.create({
   musicContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    maxWidth: '85%',
-    marginTop: 8,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    maxWidth: '90%',
+    marginTop: 12,
+    marginHorizontal: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+    backdropFilter: 'blur(10px)',
   },
   musicIconContainer: {
-    marginRight: 8,
+    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 140, 66, 0.3)',
   },
   musicTextContainer: {
     flex: 1,
     overflow: 'hidden',
+    marginRight: 8,
   },
   musicText: {
     fontSize: 13,
@@ -1551,33 +1751,45 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
     letterSpacing: 0.2,
   },
+  musicWaveContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  musicWave: {
+    width: 2,
+    backgroundColor: '#FF8C42',
+    borderRadius: 1,
+    opacity: 0.8,
+  },
   musicDiscButton: {
-    marginTop: 8,
+    marginTop: 12,
+    alignItems: 'center',
   },
   musicDiscContainer: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
   },
   musicDisc: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#fff',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 6,
   },
   musicDiscInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1585,76 +1797,106 @@ const styles = StyleSheet.create({
   actionsContainer: {
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 20,
-    paddingBottom: Platform.OS === 'ios' ? 130 : 110, // Đẩy lên cao để không bị che bởi bottom tab bar
+    gap: 10,
+    paddingBottom: Platform.OS === 'ios' ? 135 : 135, // Nhích lên 5px
   },
   avatarButton: {
-    marginBottom: 4,
+    marginBottom: 6,
     position: 'relative',
+    alignItems: 'center',
+  },
+  actionAvatarContainer: {
+    position: 'relative',
+    width: 52,
+    height: 52,
   },
   actionAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#fff',
     backgroundColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  actionAvatarBorder: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    zIndex: -1,
   },
   actionAvatarPlaceholder: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#fff',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   followButton: {
     position: 'absolute',
-    bottom: -6,
+    bottom: -8,
     left: '50%',
-    marginLeft: -10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    marginLeft: -12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#000',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 6,
   },
   actionButton: {
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    marginBottom: 4,
   },
   actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+    backdropFilter: 'blur(10px)',
   },
   actionIconContainerLiked: {
-    backgroundColor: 'rgba(255, 140, 66, 0.2)', // #FF8C42 với opacity
-    borderColor: 'rgba(255, 140, 66, 0.4)',
+    backgroundColor: 'rgba(255, 140, 66, 0.3)',
+    borderColor: 'rgba(255, 140, 66, 0.5)',
+    shadowColor: '#FF8C42',
+    shadowOpacity: 0.4,
   },
   actionText: {
     fontSize: 12,
     color: '#fff',
-    fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-    marginTop: 2,
+    letterSpacing: 0.2,
   },
   modalContainer: {
     flex: 1,

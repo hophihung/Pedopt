@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { mapPaymentMethodToDb } from '@/src/features/payment/services/paymentMethods.service';
 
 export interface Order {
   id: string;
@@ -56,7 +57,8 @@ export interface CreateOrderInput {
   shipping_district?: string;
   shipping_ward?: string;
   shipping_note?: string;
-  payment_method?: 'cod' | 'bank_transfer' | 'e_wallet';
+  payment_method?: 'cod' | 'bank_transfer' | 'e_wallet' | 'payos' | 'momo' | 'zalopay';
+  payment_transaction_id?: string;
   buyer_note?: string;
 }
 
@@ -87,6 +89,14 @@ export class OrderService {
     const shippingFee = product.shipping_fee || 0;
     const finalPrice = totalPrice + shippingFee;
 
+    // Debug payment method mapping
+    const mappedPaymentMethod = mapPaymentMethodToDb(input.payment_method as any) || 'cod';
+    console.log('Original payment method:', input.payment_method);
+    console.log('Mapped payment method:', mappedPaymentMethod);
+
+    // Temporary workaround: force COD until migration is applied
+    const safePaymentMethod = 'cod'; // TODO: Remove this after migration 053 is applied
+
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -105,7 +115,7 @@ export class OrderService {
         shipping_district: input.shipping_district,
         shipping_ward: input.shipping_ward,
         shipping_note: input.shipping_note,
-        payment_method: input.payment_method || 'cod',
+        payment_method: safePaymentMethod, // Use safe payment method temporarily
         buyer_note: input.buyer_note,
       })
       .select(`

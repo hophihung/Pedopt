@@ -143,6 +143,96 @@ serve(async (req) => {
       }
     }
 
+    // Check if this is for a subscription payment
+    // Subscription transaction_code format: SUB-{subscription_id}
+    const transactionCode = webhookData.reference || '';
+    if (transactionCode.startsWith('SUB-')) {
+      const subscriptionIdPrefix = transactionCode.replace('SUB-', '');
+      
+      // Find subscription by ID prefix
+      const { data: subscriptionData } = await supabase
+        .from('subscriptions')
+        .select('id, profile_id, plan, status, payment_id')
+        .like('id', `${subscriptionIdPrefix}%`)
+        .maybeSingle();
+
+      if (subscriptionData) {
+        if (status === '00') {
+          // Payment successful - activate subscription
+          console.log('Activating subscription:', subscriptionData.id);
+          
+          const { error: activateError } = await supabase.rpc(
+            'activate_subscription_after_payment',
+            {
+              subscription_id_param: subscriptionData.id,
+              payment_id_param: paymentLinkId,
+              payment_method_param: 'payos',
+            }
+          );
+
+          if (activateError) {
+            console.error('Error activating subscription:', activateError);
+            // Log error
+            await supabase.rpc('log_subscription_error', {
+              user_id_param: subscriptionData.profile_id,
+              subscription_id_param: subscriptionData.id,
+              error_type_param: 'activation_failed',
+              error_message_param: activateError.message,
+              error_code_param: activateError.code,
+            });
+            
+            return new Response(
+              JSON.stringify({ 
+                error: 'Failed to activate subscription', 
+                details: activateError.message 
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          console.log('Subscription activated successfully:', subscriptionData.id);
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: 'Subscription activated',
+              subscription_id: subscriptionData.id
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          // Payment failed - update subscription status
+          console.log('Payment failed for subscription:', subscriptionData.id);
+          
+          const { error: updateError } = await supabase
+            .from('subscriptions')
+            .update({ status: 'canceled' })
+            .eq('id', subscriptionData.id);
+
+          if (updateError) {
+            console.error('Error updating subscription status:', updateError);
+          }
+
+          // Log error
+          await supabase.rpc('log_subscription_error', {
+            user_id_param: subscriptionData.profile_id,
+            subscription_id_param: subscriptionData.id,
+            error_type_param: 'payment_failed',
+            error_message_param: `Payment failed with code: ${status}`,
+            error_code_param: status,
+          });
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: 'Subscription payment failed',
+              subscription_id: subscriptionData.id
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     // Check if this is for a transaction (pet)
     // Try both payos_payment_link_id and payment_transaction_id (for backward compatibility)
     const { data: transactionData } = await supabase

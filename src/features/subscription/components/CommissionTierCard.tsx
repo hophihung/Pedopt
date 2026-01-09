@@ -64,8 +64,11 @@ export function CommissionTierCard({
         return ['#C0C0C0', '#808080'];
       case 'bronze':
         return ['#CD7F32', '#8B4513'];
+      case 'free':
+      case 'default':
+        return ['#4CAF50', '#388E3C']; // Green for free tier
       default:
-        return ['#9E9E9E', '#757575'];
+        return ['#4CAF50', '#388E3C']; // Green for free tier
     }
   };
 
@@ -81,8 +84,11 @@ export function CommissionTierCard({
         return 'Bạc';
       case 'bronze':
         return 'Đồng';
+      case 'free':
+      case 'default':
+        return 'Free';
       default:
-        return 'Mặc định';
+        return 'Free';
     }
   };
 
@@ -108,7 +114,7 @@ export function CommissionTierCard({
             </View>
             <View style={styles.headerText}>
               <Text style={styles.tierLabel}>
-                Hạng {getTierLabel(current_tier.tier_name)}
+                {getTierLabel(current_tier.tier_name)}
               </Text>
               <Text style={styles.tierName}>{current_tier.tier_name}</Text>
             </View>
@@ -139,7 +145,7 @@ export function CommissionTierCard({
             <View style={styles.nextTierContainer}>
               <View style={styles.progressHeader}>
                 <Text style={styles.progressLabel}>
-                  Đến hạng {getTierLabel(next_tier.tier_name)} còn:
+                  Đến {getTierLabel(next_tier.tier_name)} còn:
                 </Text>
                 <Text style={styles.progressPoints}>
                   {points_to_next_tier} điểm
@@ -154,7 +160,7 @@ export function CommissionTierCard({
                 />
               </View>
               <Text style={styles.nextTierInfo}>
-                Hạng tiếp theo: {next_tier.commission_rate}% +{' '}
+                Tiếp theo: {next_tier.commission_rate}% +{' '}
                 {next_tier.processing_fee_rate}% ={' '}
                 {next_tier.commission_rate + next_tier.processing_fee_rate}%
               </Text>

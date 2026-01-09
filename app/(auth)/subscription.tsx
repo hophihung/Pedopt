@@ -124,23 +124,17 @@ export default function SubscriptionScreen() {
 
   if (loading) {
     return (
-      <LinearGradient
-        colors={['#FFE5B4', '#FFDAB9', '#FFB6C1']}
-        style={styles.gradient}
-      >
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF69B4" />
+          <ActivityIndicator size="large" color="#FF6B6B" />
           <Text style={styles.loadingText}>Loading subscription plans...</Text>
         </View>
-      </LinearGradient>
+      </View>
     );
   }
 
   return (
-    <LinearGradient
-      colors={['#FFE5B4', '#FFDAB9', '#FFB6C1']}
-      style={styles.gradient}
-    >
+    <View style={styles.container}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Header */}
@@ -248,16 +242,14 @@ export default function SubscriptionScreen() {
           </View>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   content: {
     padding: 24,
@@ -270,135 +262,180 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FAFAFA',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#8B4513',
+    color: '#1F2937',
+    fontWeight: '600',
   },
   header: {
     marginBottom: 32,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   headerEmoji: {
     fontSize: 48,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
-    fontWeight: 'bold',
+    fontWeight: '800',
     marginBottom: 8,
-    color: '#8B4513',
+    color: '#1F2937',
     textAlign: 'center',
+    fontSize: 24,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    color: '#8B4513',
+    color: '#6B7280',
     textAlign: 'center',
     fontWeight: '500',
+    fontSize: 16,
+    lineHeight: 24,
   },
   billingToggle: {
     flexDirection: 'row',
     marginBottom: 24,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   toggleButton: {
     flex: 1,
     marginHorizontal: 2,
+    borderRadius: 12,
   },
   plansContainer: {
     marginBottom: 32,
   },
   planCard: {
-    marginBottom: 16,
-    borderRadius: 16,
-    elevation: 2,
+    marginBottom: 20,
+    borderRadius: 20,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 12,
+    backgroundColor: '#FFFFFF',
   },
   selectedPlanCard: {
     borderWidth: 2,
-    borderColor: '#FF69B4',
-    elevation: 4,
+    borderColor: '#FF6B6B',
+    elevation: 8,
+    shadowColor: '#FF6B6B',
+    shadowOpacity: 0.2,
   },
   popularPlanCard: {
     borderWidth: 2,
-    borderColor: '#f59e0b',
+    borderColor: '#F59E0B',
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.2,
   },
   planContent: {
-    padding: 20,
+    padding: 24,
     position: 'relative',
   },
   popularBadge: {
     position: 'absolute',
-    top: -8,
+    top: -10,
     right: 16,
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   popularText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   planHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   planName: {
     marginLeft: 12,
-    fontWeight: 'bold',
-    color: '#8B4513',
+    fontWeight: '800',
+    color: '#1F2937',
+    fontSize: 20,
+    letterSpacing: -0.3,
   },
   planPrice: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     marginBottom: 8,
+    color: '#FF6B6B',
+    letterSpacing: -0.5,
   },
   planDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280',
     marginBottom: 16,
+    fontWeight: '500',
+    lineHeight: 20,
   },
   featuresContainer: {
-    marginTop: 8,
+    marginTop: 12,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   featureText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#8B4513',
+    color: '#374151',
     flex: 1,
+    fontWeight: '500',
+    lineHeight: 20,
   },
   moreFeatures: {
     fontSize: 12,
-    color: '#666',
+    color: '#9CA3AF',
     fontStyle: 'italic',
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: '500',
   },
   buttonContainer: {
     marginBottom: 40,
   },
   continueButton: {
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 16,
-    elevation: 4,
-    backgroundColor: '#FF69B4',
+    elevation: 6,
+    backgroundColor: '#FF6B6B',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
   helpText: {
     textAlign: 'center',
-    marginTop: 12,
-    fontSize: 12,
-    color: '#8B4513',
-    opacity: 0.7,
+    marginTop: 16,
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+    lineHeight: 18,
   },
 });

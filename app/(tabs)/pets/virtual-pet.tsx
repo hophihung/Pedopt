@@ -20,6 +20,7 @@ import { MiniGame } from '@/src/features/virtualPet/components/MiniGame';
 import { PetInteractions } from '@/src/features/virtualPet/components/PetInteractions';
 import { getEvolutionStageName, getEvolutionStage } from '@/src/config/virtualPet/animations';
 import { GamerBackground } from '@/src/components/backgrounds/GamerBackground';
+import { Header } from '@/src/components/Header';
 import { colors } from '@/src/theme/colors';
 
 
@@ -99,12 +100,11 @@ export default function VirtualPetScreen() {
   if (!hasVirtualPet) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={['#FF6B9D', '#FF8E53']}
-          style={styles.headerGradient}
-        >
-          <Text style={styles.headerTitle}>Virtual Pet</Text>
-        </LinearGradient>
+        <Header 
+          title="Virtual Pet"
+          showBack={true}
+          onBack={() => router.replace('/(tabs)/pets/my-pets')}
+        />
 
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🐾</Text>
@@ -145,21 +145,11 @@ export default function VirtualPetScreen() {
     <GamerBackground intensity="medium">
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.headerGradient}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.replace('/(tabs)/pets/my-pets')}
-              activeOpacity={0.7}
-            >
-              <ArrowLeft size={24} color="#FF6B6B" strokeWidth={2.5} />
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>{virtualPet.name}</Text>
-              <Text style={styles.headerSubtitle}>
-                {petEmojis[virtualPet.pet_type]} Level {virtualPet.level} • {getEvolutionStageName(getEvolutionStage(virtualPet.level))}
-              </Text>
-            </View>
+        <Header 
+          title={virtualPet.name}
+          showBack={true}
+          onBack={() => router.replace('/(tabs)/pets/my-pets')}
+          rightActions={
             <TouchableOpacity
               style={styles.calendarButton}
               onPress={() => setShowCheckinCalendar(true)}
@@ -170,7 +160,14 @@ export default function VirtualPetScreen() {
                 <Text style={styles.calendarButtonText}>{virtualPet.streak_days}</Text>
               </View>
             </TouchableOpacity>
-          </View>
+          }
+        />
+
+        {/* Pet Info Subtitle */}
+        <View style={styles.petInfoContainer}>
+          <Text style={styles.petInfoText}>
+            {petEmojis[virtualPet.pet_type]} Level {virtualPet.level} • {getEvolutionStageName(getEvolutionStage(virtualPet.level))}
+          </Text>
         </View>
 
       <ScrollView 
@@ -372,6 +369,21 @@ export default function VirtualPetScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Bottom Back Button */}
+        <TouchableOpacity
+          style={styles.bottomBackButton}
+          onPress={() => router.replace('/(tabs)/pets/my-pets')}
+          activeOpacity={0.7}
+        >
+          <LinearGradient
+            colors={['#FF6B6B', '#FF8E53']}
+            style={styles.bottomBackButtonGradient}
+          >
+            <ArrowLeft size={20} color="#FFF" strokeWidth={2.5} />
+            <Text style={styles.bottomBackButtonText}>Quay lại danh sách Pet</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Level Up Modal */}
@@ -453,38 +465,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 16,
+  petInfoContainer: {
     paddingHorizontal: 20,
-    zIndex: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(99, 102, 241, 0.2)',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backButton: {
-    backgroundColor: '#FFFFFF',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  headerContent: {
-    flex: 1,
-    marginLeft: 8,
+  petInfoText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   calendarButton: {
     backgroundColor: '#FFFFFF',
@@ -508,25 +500,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FF6B6B',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textShadowColor: '#6366F1',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-    fontWeight: '500',
-  },
   content: {
     flex: 1,
   },
   contentContainer: {
     paddingBottom: Platform.OS === 'ios' ? 130 : 110, // Đẩy lên cao để không bị che bởi bottom tab bar
+    paddingTop: 0, // Bỏ padding top vì đã có Header component
   },
   petContainer: {
     alignItems: 'center',
@@ -754,6 +733,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     marginLeft: 4,
+  },
+  bottomBackButton: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  bottomBackButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  bottomBackButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
   },
 });
 

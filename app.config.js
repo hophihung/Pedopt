@@ -1,0 +1,109 @@
+export default {
+  expo: {
+    name: "Pet Adoption",
+    slug: "pet-adoption-app",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/dog.png",
+    scheme: "petadoption",
+    userInterfaceStyle: "automatic",
+    newArchEnabled: true,
+    assetBundlePatterns: [
+      "**/*"
+    ],
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.petadoption.app",
+      infoPlist: {
+        CFBundleURLTypes: [
+          {
+            CFBundleURLSchemes: [
+              "petadoption",
+              "fb1731268644198831"
+            ]
+          }
+        ],
+        NSLocationWhenInUseUsageDescription: "Ứng dụng cần quyền truy cập vị trí để kết nối bạn với các người dùng và thú cưng xung quanh.",
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Ứng dụng cần quyền truy cập vị trí để kết nối bạn với các người dùng và thú cưng xung quanh."
+      }
+    },
+    android: {
+      package: "com.petadoption.app",
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/dog.png",
+        backgroundColor: "#ffffff"
+      },
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "petadoption"
+            },
+            {
+              scheme: "fb1731268644198831"
+            }
+          ],
+          category: [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    web: {
+      bundler: "metro",
+      output: "single",
+      favicon: "./assets/images/favicon.png"
+    },
+    developmentClient: {
+      silentLaunch: true
+    },
+    runtimeVersion: {
+      policy: "appVersion"
+    },
+    plugins: [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-facebook",
+        {
+          appId: "1731268644198831",
+          displayName: "AdoPet",
+          scheme: "fb1731268644198831",
+          advertiserIDCollectionEnabled: false,
+          autoLogAppEventsEnabled: false,
+          isAutoInitEnabled: true
+        }
+      ],
+      [
+        "expo-web-browser",
+        {
+          schemes: [
+            "petadoption"
+          ]
+        }
+      ],
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "Ứng dụng cần quyền truy cập vị trí để kết nối bạn với các người dùng và thú cưng xung quanh.",
+          locationAlwaysPermission: "Ứng dụng cần quyền truy cập vị trí để kết nối bạn với các người dùng và thú cưng xung quanh.",
+          locationWhenInUsePermission: "Ứng dụng cần quyền truy cập vị trí để kết nối bạn với các người dùng và thú cưng xung quanh."
+        }
+      ]
+    ],
+    experiments: {
+      typedRoutes: true
+    },
+    extra: {
+      router: {
+        origin: false
+      },
+      eas: {
+        projectId: "49953c21-4d55-4e59-bed4-73d3fe3ac23c"
+      }
+    }
+  }
+};

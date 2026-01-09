@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Package, Truck, CheckCircle, XCircle, Edit, MapPin } from 'lucide-react-native';
+import { ArrowLeft, Package, Truck, Edit } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { OrderService, Order } from '@/src/features/products/services/order.service';
@@ -282,22 +282,24 @@ export default function ManageOrdersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={[colors.primary, colors.primaryLight]}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Quản lý đơn hàng</Text>
-          <View style={{ width: 40 }} />
-        </View>
-      </LinearGradient>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryLight]}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <ArrowLeft size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Quản lý đơn hàng</Text>
+            <View style={{ width: 40 }} />
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
 
       {/* Status Filters */}
       <ScrollView 
@@ -324,8 +326,14 @@ export default function ManageOrdersScreen() {
               {status === 'all' ? 'Tất cả' : getStatusText(status as OrderStatus)}
             </Text>
             {statusCounts[status] > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{statusCounts[status]}</Text>
+              <View style={[
+                styles.filterBadge,
+                statusFilter === status && styles.filterBadgeActive
+              ]}>
+                <Text style={[
+                  styles.filterBadgeText,
+                  statusFilter === status && styles.filterBadgeTextActive
+                ]}>{statusCounts[status]}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -344,6 +352,7 @@ export default function ManageOrdersScreen() {
           data={filteredOrders}
           renderItem={renderOrder}
           keyExtractor={item => item.id}
+          style={styles.listContainer}
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + 20 },
@@ -478,7 +487,7 @@ export default function ManageOrdersScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -487,15 +496,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F7FA',
   },
+  safeArea: {
+    backgroundColor: colors.primary,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerGradient: {
-    paddingTop: 20,
-    paddingBottom: 16,
     paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   header: {
     flexDirection: 'row',
@@ -507,6 +518,8 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   headerTitle: {
     fontSize: 20,
@@ -517,27 +530,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E4E7EB',
+    maxHeight: 60,
   },
   filterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
   },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: '#F5F7FA',
-    marginRight: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
   },
@@ -545,17 +566,26 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   filterBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
+    borderRadius: 8,
+    minWidth: 18,
     alignItems: 'center',
   },
+  filterBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
   filterBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
+    color: colors.primary,
+  },
+  filterBadgeTextActive: {
     color: '#fff',
+  },
+  listContainer: {
+    flex: 1,
   },
   listContent: {
     padding: 16,
@@ -591,13 +621,17 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    minWidth: 70,
+    alignItems: 'center',
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   productRow: {
     flexDirection: 'row',
@@ -646,8 +680,8 @@ const styles = StyleSheet.create({
   },
   orderActions: {
     flexDirection: 'row',
-    gap: 8,
-    paddingTop: 12,
+    gap: 10,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
@@ -656,20 +690,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     gap: 6,
+    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   trackingButton: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E3F2FD',
   },
   updateButton: {
     backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
   },
   actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.primary,
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
@@ -741,29 +787,41 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modalCancelButton: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E4E7EB',
   },
   modalConfirmButton: {
     backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
   },
   modalButtonDisabled: {
-    backgroundColor: '#D4D6DC',
+    backgroundColor: '#E9ECEF',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   modalCancelText: {
-    color: '#666',
-    fontSize: 16,
+    color: '#6C757D',
+    fontSize: 15,
     fontWeight: '600',
   },
   modalConfirmText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 
